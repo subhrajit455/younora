@@ -4,6 +4,7 @@ const {
   TOKEN_AUDIENCE,
   RESELLER_STATUS,
   ALL_PERMISSIONS,
+  PERMISSIONS,
   ADDRESS_TYPE,
 } = require('@younora/shared-constants');
 const AdminUser = require('../../src/modules/users/models/adminUser.model');
@@ -12,7 +13,7 @@ const Address = require('../../src/modules/users/models/address.model');
 const RefreshToken = require('../../src/modules/users/models/refreshToken.model');
 
 describe('Slice 1: Models & Constants', () => {
-  describe('Shared Constants', () => {
+  describe('Shared Constants & Permissions', () => {
     test('defines required roles, user types, and token audiences', () => {
       expect(ROLES.SUPER_ADMIN).toBe('SUPER_ADMIN');
       expect(ROLES.STAFF).toBe('STAFF');
@@ -33,17 +34,38 @@ describe('Slice 1: Models & Constants', () => {
       expect(RESELLER_STATUS.SUSPENDED).toBe('SUSPENDED');
     });
 
-    test('contains comprehensive granular permissions', () => {
-      expect(ALL_PERMISSIONS).toContain('products.read');
-      expect(ALL_PERMISSIONS).toContain('products.write');
-      expect(ALL_PERMISSIONS).toContain('orders.write');
-      expect(ALL_PERMISSIONS).toContain('returns.manage');
-      expect(ALL_PERMISSIONS).toContain('audit.read');
+    test('contains full agreed permission list', () => {
+      const requiredPermissions = [
+        'inventory.view-cost',
+        'resellers.view-sensitive',
+        'reselling-invoices.read',
+        'payouts.manage',
+        'manual-returns.manage',
+        'audit.read',
+        'staff.manage',
+        'products.read',
+        'products.write',
+        'orders.write',
+        'returns.manage',
+        'settings.manage',
+      ];
+
+      for (const perm of requiredPermissions) {
+        expect(ALL_PERMISSIONS).toContain(perm);
+      }
+
+      expect(PERMISSIONS.INVENTORY_VIEW_COST).toBe('inventory.view-cost');
+      expect(PERMISSIONS.RESELLERS_VIEW_SENSITIVE).toBe('resellers.view-sensitive');
+      expect(PERMISSIONS.RESELLING_INVOICES_READ).toBe('reselling-invoices.read');
+      expect(PERMISSIONS.PAYOUTS_MANAGE).toBe('payouts.manage');
+      expect(PERMISSIONS.MANUAL_RETURNS_MANAGE).toBe('manual-returns.manage');
+      expect(PERMISSIONS.AUDIT_READ).toBe('audit.read');
+      expect(PERMISSIONS.STAFF_MANAGE).toBe('staff.manage');
     });
   });
 
   describe('AdminUser Model', () => {
-    test('validates required fields and defaults', () => {
+    test('validates required fields, timestamps, defaults, and select: false on passwordHash', () => {
       const user = new AdminUser({
         name: 'Staff Member',
         email: 'STAFF@YOUNORA.COM',
@@ -56,6 +78,12 @@ describe('Slice 1: Models & Constants', () => {
       expect(user.isActive).toBe(true);
       expect(user.failedLoginAttempts).toBe(0);
       expect(user.lockUntil).toBeNull();
+      expect(user.lastLoginAt).toBeNull();
+      expect(user.passwordChangedAt).toBeNull();
+
+      // Check schema config for passwordHash select: false
+      const pwPath = AdminUser.schema.path('passwordHash');
+      expect(pwPath.options.select).toBe(false);
     });
 
     test('fails validation when email is invalid', () => {
@@ -87,7 +115,38 @@ describe('Slice 1: Models & Constants', () => {
   });
 
   describe('Customer Model', () => {
-    test('validates customer defaults and reseller fields placeholder', () => {
+    test('resellerStatus is single source of truth and isReseller is a virtual', () => {
+      const customer = new Customer({
+        name: 'Jane Doe',
+        email: 'JANE@EXAMPLE.COM',
+        passwordHash: 'hash',
+      });
+
+      // Default state: resellerStatus is NONE, isReseller virtual is false
+      expect(customer.resellerStatus).toBe(RESELLER_STATUS.NONE);
+      expect(customer.isReseller).toBe(false);
+
+      // Status PENDING -> isReseller false
+      customer.resellerStatus = RESELLER_STATUS.PENDING;
+      expect(customer.isReseller).toBe(false);
+
+      // Status APPROVED -> isReseller true
+      customer.resellerStatus = RESELLER_STATUS.APPROVED;
+      expect(customer.isReseller).toBe(true);
+
+      // Status REJECTED / SUSPENDED -> isReseller false
+      customer.resellerStatus = RESELLER_STATUS.REJECTED;
+      expect(customer.isReseller).toBe(false);
+
+      customer.resellerStatus = RESELLER_STATUS.SUSPENDED;
+      expect(customer.isReseller).toBe(false);
+
+      // Verify serialization includes virtual
+      const json = customer.toJSON();
+      expect(json).toHaveProperty('isReseller', false);
+    });
+
+    test('validates customer defaults, timestamps, and passwordHash select: false', () => {
       const customer = new Customer({
         name: 'Jane Doe',
         email: 'JANE@EXAMPLE.COM',
@@ -99,11 +158,14 @@ describe('Slice 1: Models & Constants', () => {
       expect(customer.codRestricted).toBe(false);
       expect(customer.emailVerified).toBe(false);
       expect(customer.failedLoginAttempts).toBe(0);
-
-      // Reseller fields check
-      expect(customer.isReseller).toBe(false);
-      expect(customer.resellerStatus).toBe(RESELLER_STATUS.NONE);
+      expect(customer.lockUntil).toBeNull();
+      expect(customer.lastLoginAt).toBeNull();
+      expect(customer.passwordChangedAt).toBeNull();
       expect(customer.payoutDetails).toEqual({});
+
+      // Check schema config for passwordHash select: false
+      const pwPath = Customer.schema.path('passwordHash');
+      expect(pwPath.options.select).toBe(false);
     });
 
     test('validates Indian 10-digit phone format', () => {
@@ -147,7 +209,7 @@ describe('Slice 1: Models & Constants', () => {
   });
 
   describe('RefreshToken Model', () => {
-    test('validates token properties and TTL index configuration', () => {
+    test('validates userType, replacedAt for grace window, and token hash storage', () => {
       const token = new RefreshToken({
         userId: '507f1f77bcf86cd799439011',
         userType: USER_TYPES.ADMIN,
@@ -158,9 +220,19 @@ describe('Slice 1: Models & Constants', () => {
       });
 
       expect(token.validateSync()).toBeUndefined();
+      expect(token.userType).toBe(USER_TYPES.ADMIN);
       expect(token.replacedByTokenHash).toBeNull();
+      expect(token.replacedAt).toBeNull();
       expect(token.revokedAt).toBeNull();
+
+      // Check tokenHash path config
+      const hashPath = RefreshToken.schema.path('tokenHash');
+      expect(hashPath.options.required).toBe(true);
+      expect(hashPath.options.unique).toBe(true);
+
+      // Check TTL index configuration
+      const expiresPath = RefreshToken.schema.path('expiresAt');
+      expect(expiresPath.options.index).toEqual({ expires: 0 });
     });
   });
 });
-

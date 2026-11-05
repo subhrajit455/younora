@@ -71,12 +71,7 @@ const customerSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    // Reseller fields (placeholder data model per specifications, no business logic)
-    isReseller: {
-      type: Boolean,
-      default: false,
-      index: true,
-    },
+    // Reseller fields (resellerStatus is single source of truth; isReseller is a virtual)
     resellerStatus: {
       type: String,
       enum: Object.values(RESELLER_STATUS),
@@ -123,8 +118,15 @@ const customerSchema = new mongoose.Schema(
   {
     timestamps: true,
     collection: 'customers',
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
+
+// Virtual: isReseller derived from resellerStatus
+customerSchema.virtual('isReseller').get(function () {
+  return this.resellerStatus === RESELLER_STATUS.APPROVED;
+});
 
 // Method: check if account is currently locked
 customerSchema.methods.isLocked = function () {

@@ -35,6 +35,10 @@ const refreshTokenSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    replacedAt: {
+      type: Date,
+      default: null,
+    },
     revokedAt: {
       type: Date,
       default: null,
