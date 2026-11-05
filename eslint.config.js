@@ -36,7 +36,7 @@ module.exports = [
     },
   },
   {
-    ignores: ['node_modules/', 'coverage/', 'dist/', 'build/'],
+    ignores: ['node_modules/', 'coverage/', 'dist/', 'build/', 'reference/'],
   },
 ];
 

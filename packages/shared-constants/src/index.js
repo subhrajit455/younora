@@ -1,11 +1,42 @@
 /**
  * Younora Core Shared Constants and Enums
  */
+const { PERMISSIONS, ALL_PERMISSIONS } = require('./permissions');
 
 const ROLES = Object.freeze({
   SUPER_ADMIN: 'SUPER_ADMIN',
   STAFF: 'STAFF',
   CUSTOMER: 'CUSTOMER',
+});
+
+const USER_TYPES = Object.freeze({
+  ADMIN: 'ADMIN',
+  CUSTOMER: 'CUSTOMER',
+});
+
+const TOKEN_AUDIENCE = Object.freeze({
+  ADMIN: 'younora:admin',
+  CUSTOMER: 'younora:customer',
+});
+
+const RESELLER_STATUS = Object.freeze({
+  NONE: 'NONE',
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  SUSPENDED: 'SUSPENDED',
+});
+
+const ADDRESS_TYPE = Object.freeze({
+  HOME: 'HOME',
+  WORK: 'WORK',
+  OTHER: 'OTHER',
+});
+
+const GENDER = Object.freeze({
+  MALE: 'MALE',
+  FEMALE: 'FEMALE',
+  OTHER: 'OTHER',
 });
 
 const ORDER_STATUS = Object.freeze({
@@ -62,10 +93,16 @@ const RETURN_REASONS = Object.freeze({
 
 module.exports = {
   ROLES,
+  USER_TYPES,
+  TOKEN_AUDIENCE,
+  PERMISSIONS,
+  ALL_PERMISSIONS,
+  RESELLER_STATUS,
+  ADDRESS_TYPE,
+  GENDER,
   ORDER_STATUS,
   PAYMENT_METHOD,
   PAYMENT_STATUS,
   RETURN_STATUS,
   RETURN_REASONS,
 };
-
