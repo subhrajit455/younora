@@ -1,0 +1,10 @@
+{
+  "name": "@younora/shared-validation",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "private": true,
+  "dependencies": {
+    "zod": "^3.23.8"
+  }
+}
+

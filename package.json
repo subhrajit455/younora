@@ -1,0 +1,25 @@
+{
+  "name": "younora",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Younora Luxury Fashion E-Commerce Platform",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace=@younora/backend",
+    "test:backend": "npm run test --workspace=@younora/backend",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.5.0",
+    "@commitlint/config-conventional": "^19.5.0",
+    "@eslint/js": "^9.14.0",
+    "eslint": "^9.14.0",
+    "prettier": "^3.3.3"
+  }
+}
+
