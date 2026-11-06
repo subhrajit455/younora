@@ -16,6 +16,8 @@ const auditRoutes = require('./modules/audit/audit.routes');
 const notificationsRoutes = require('./modules/notifications/notifications.routes');
 const devEmitterRoutes = require('./modules/notifications/devEmitter.routes');
 const { registerNotificationSubscribers } = require('./modules/notifications/notifications.subscriber');
+const { adminCatalogRouter, storeMenuRouter } = require('./modules/catalog/catalog.routes');
+const uploadRouter = require('./modules/catalog/upload.routes');
 
 // Initialize event subscribers
 registerNotificationSubscribers();
@@ -109,6 +111,9 @@ if (env.NODE_ENV !== 'production') {
 }
 
 app.use(`${env.API_PREFIX}/notifications`, notificationsRoutes);
+app.use(`${env.API_PREFIX}/admin/uploads`, uploadRouter);
+app.use(`${env.API_PREFIX}/admin`, adminCatalogRouter);
+app.use(`${env.API_PREFIX}/store`, storeMenuRouter);
 app.use('/', healthRoutes); // Also expose /health at root for orchestrators
 
 // 404 Handler

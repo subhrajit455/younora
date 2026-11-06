@@ -44,6 +44,12 @@ const envSchema = z.object({
   SMTP_PASS: z.string().default(''),
   EMAIL_FROM: z.string().default('Younora Luxury Fashion <noreply@younora.com>'),
   STOREFRONT_URL: z.string().default('http://localhost:3000'),
+
+  // Media & Cloudinary
+  CLOUDINARY_CLOUD_NAME: z.string().default('younora-cloud'),
+  CLOUDINARY_API_KEY: z.string().default('123456789012345'),
+  CLOUDINARY_API_SECRET: z.string().default('younora-cloudinary-secret-key-12345'),
+  UPLOAD_MAX_FILE_SIZE_BYTES: z.coerce.number().int().positive().default(5 * 1024 * 1024),
 });
 
 function parseEnv(envSource = process.env) {

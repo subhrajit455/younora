@@ -116,6 +116,23 @@ const EVENT_NAMES = Object.freeze({
   MANUAL_RETURN_RECORDED: 'manual_return.recorded',
 });
 
+const ATTRIBUTE_TYPE = Object.freeze({
+  COLOR: 'COLOR',
+  FABRIC: 'FABRIC',
+  FIT: 'FIT',
+  PATTERN: 'PATTERN',
+  OCCASION: 'OCCASION',
+  SLEEVE: 'SLEEVE',
+  NECK: 'NECK',
+});
+
+const SIZE_CHART_UNIT = Object.freeze({
+  INCH: 'INCH',
+  CM: 'CM',
+});
+
+const AUDIENCE_NAMES = Object.freeze(['Men', 'Women', 'Kids']);
+
 module.exports = {
   ROLES,
   USER_TYPES,
@@ -132,4 +149,7 @@ module.exports = {
   RETURN_REASONS,
   NOTIFICATION_RECIPIENT_TYPE,
   EVENT_NAMES,
+  ATTRIBUTE_TYPE,
+  SIZE_CHART_UNIT,
+  AUDIENCE_NAMES,
 };
