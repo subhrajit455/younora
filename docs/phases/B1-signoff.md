@@ -52,7 +52,18 @@
   - `apps/backend/src/modules/users/models/address.model.js`
   - `apps/backend/src/modules/users/models/refreshToken.model.js` (`replacedAt`, `userType`)
   - `apps/backend/tests/unit/models.test.js`
-- [ ] **Slice 2: Admin Auth, Middleware & Seed Script**
+- [x] **Slice 2: Admin Auth, Middleware & Seed Script**
+  - `src/config/env.js` (JWT and seed configuration)
+  - `src/core/utils/crypto.js` (SHA-256 token hashing, UUID family generation)
+  - `src/core/utils/cookies.js` (hardened cookie management: `ynr_admin_rt`, `ynr_cust_rt`)
+  - `src/core/middleware/authenticate.js` (live DB-backed auth, audience separation, passwordChangedAt validation)
+  - `src/core/middleware/authorize.js` (`authorizeRole`, `requirePermission` with SUPER_ADMIN bypass)
+  - `src/modules/auth/auth.validation.js` (Zod login schema)
+  - `src/modules/auth/auth.service.js` (admin login, logout, refresh rotation, ~10s grace window, reuse detection, max 10 active sessions)
+  - `src/modules/auth/auth.controller.js`
+  - `src/modules/auth/auth.routes.js` (`/api/v1/auth/admin/login`, `/logout`, `/refresh`)
+  - `src/seed/admin.seed.js` (idempotent seed script, refuses placeholder password in production)
+  - `tests/integration/adminAuth.test.js`
 - [ ] **Slice 3: Staff Management CRUD**
 - [ ] **Slice 4: Customer Auth & Password Reset Flow**
 - [ ] **Slice 5: Profile & Address CRUD**
@@ -60,6 +71,7 @@
 
 ---
 
-## Slice 1 Verification
-- **Automated Tests:** 26/26 passing tests (`models.test.js`, `health.test.js`, `error.test.js`, `env.test.js`).
+## Slice Verification
+- **Slice 1:** 26/26 tests passing (`models.test.js`, `health.test.js`, `error.test.js`, `env.test.js`).
+- **Slice 2:** 42/42 tests passing (added `adminAuth.test.js` with 16 integration tests).
 - **Linter:** ESLint clean (0 errors, 0 warnings).

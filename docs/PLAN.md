@@ -1,527 +1,524 @@
 # YOUNORA LUXURY FASHION — E-Commerce Platform
-## Master Project Plan, Architecture & Phase-Wise Build Guide
+## Master Project Plan v3.0 (Final) — Architecture, Reselling, Phase-Wise Build Guide
 
 | | |
 |---|---|
-| **Project** | Younora Luxury Fashion — own-brand e-commerce (Storefront + CRM) |
-| **Stack** | MERN (MongoDB, Express, React / Next.js, Node.js) |
-| **Doc version** | 1.0 — 4 Nov 2026 (pre-client-meeting draft) |
-| **Build order** | **Backend first (fully tested) → CRM frontend → Storefront frontend** |
-| **Working style** | Phase-wise, one phase at a time, human review + test gate before the next phase |
-| **AI tooling** | Antigravity AI (agent-assisted coding, controlled by the developer) |
+| **Project** | Younora Luxury Fashion — own-brand storefront + CRM + reseller panel |
+| **Stack** | MERN — MongoDB, Express 5, React (CRM) / Next.js (storefront), Node 20, **CommonJS** |
+| **Version** | 3.0 — 6 Nov 2026 (supersedes v1.0 and v2.0) |
+| **Build order** | Backend (fully tested) → CRM → Storefront (incl. Reseller panel) |
+| **Working style** | One phase at a time. Agent describes the phase → owner approves → agent codes → agent writes sign-off → agent gives commit + tag → STOP |
+| **Philosophy** | Simple application that works properly first. Advanced features come later (see §24). |
 
-> **How to use this file:** Keep it in the repo root as `docs/PLAN.md`. Before each Antigravity session, give the agent (1) Section 3 (Engineering rules), (2) the single phase you are working on, and (3) the relevant data-model/API sections. **Never ask it to build more than one phase at a time.**
->
-> Items marked **`[CONFIRM]`** are decisions to finalize in the client meeting. Items marked **`[VERIFY]`** must be checked against the third-party's current official docs before coding (Bigship, Razorpay, Web Push, etc.).
+> **File location:** `docs/PLAN.md` (repo root). The Antigravity agent reads this file directly. The owner does **not** need to paste prompts per phase. The owner only says **"Start Phase <ID>"**.
 
 ---
 
 ## TABLE OF CONTENTS
-
-1. [Project Overview & Goals](#1-project-overview--goals)
-2. [Scope: Features Master List](#2-scope-features-master-list)
-3. [Engineering Rules (give these to the AI agent every session)](#3-engineering-rules)
-4. [Brand & Design System (from the logo)](#4-brand--design-system)
-5. [System Architecture](#5-system-architecture)
-6. [Data Flow Diagrams (DFD)](#6-data-flow-diagrams-dfd)
-7. [Database Design](#7-database-design)
-8. [Folder Structure](#8-folder-structure)
-9. [Reusability Strategy (from the old Green Tree backend)](#9-reusability-strategy)
-10. [Core Business Logic Specs](#10-core-business-logic-specs)
-11. [In-House Notification System](#11-in-house-notification-system)
-12. [Bigship Integration Design](#12-bigship-integration-design)
-13. [Payments Design (Razorpay + COD)](#13-payments-design-razorpay--cod)
-14. [API Surface](#14-api-surface)
-15. [Phase Plan — BACKEND](#15-phase-plan--backend)
-16. [Phase Plan — FRONTEND](#16-phase-plan--frontend)
-17. [Testing Strategy](#17-testing-strategy)
-18. [Security Checklist](#18-security-checklist)
-19. [Deployment, DevOps & Environments](#19-deployment-devops--environments)
-20. [Git Workflow & Definition of Done](#20-git-workflow--definition-of-done)
-21. [Antigravity AI Working Protocol](#21-antigravity-ai-working-protocol)
-22. [Client Meeting Question Bank](#22-client-meeting-question-bank)
-23. [Risks & Mitigations](#23-risks--mitigations)
-24. [Future Roadmap / Add-On Ideas](#24-future-roadmap--add-on-ideas)
-25. [Decision Log & Change Log](#25-decision-log--change-log)
+0. Phase Progress Tracker
+1. Overview, Goals, Roles
+2. **Agent Operating Protocol (MANDATORY)**
+3. Engineering Rules
+4. Brand & Design System
+5. System Architecture
+6. Data Flow Diagrams
+7. Database Design
+8. Core Business Logic Specs
+9. Reselling Module (full spec)
+10. Manual Returns Register
+11. Batch System & Batch Search
+12. In-App Notification System
+13. Bigship Integration
+14. Payments (Razorpay + COD)
+15. Folder Structure
+16. API Surface
+17. Backend Phase Plan (B0–B13)
+18. Frontend Phase Plan (F0–F11)
+19. Testing Strategy
+20. Security Checklist
+21. Deployment & Environments
+22. Git Workflow, Commit & Tag Convention
+23. Risks & Mitigations
+24. Deferred Features / Roadmap
+25. Decision Log & Open Questions
+26. Appendix: Permissions, Enums, Sign-off Template
 
 ---
 
-## 1. Project Overview & Goals
+## 0. Phase Progress Tracker
+*(The agent updates `docs/phases/PROGRESS.md` after every phase; this table is the master copy.)*
+
+| Phase | Name | Status | Tag |
+|---|---|---|---|
+| B0 | Foundation | ✅ Done | v0.0.0 |
+| B1 | Auth, Users, Roles | 🟡 In progress — Slice 1 done, **resume at Slice 2** | v0.1.0 |
+| B2–B13 | see §17 | ⬜ Not started | — |
+| F0–F11 | see §18 | ⬜ Not started | — |
+
+---
+
+## 1. Overview, Goals, Roles
 
 ### 1.1 Background
-The client previously sold garments on Meesho. The main pain point was **unjustified product returns** with no valid reason. He now wants his **own platform** to sell under the brand **Younora Luxury Fashion**, with full control over catalog, pricing, returns policy, and customers.
+The owner sold garments on Meesho and suffered from unjustified returns. He now wants **his own platform** under the brand **Younora Luxury Fashion** with control over catalog, batches, orders, pricing, and a **reselling programme** (people share products and earn a margin). Returns are handled **manually** (phone/WhatsApp), not through the app.
 
-### 1.2 Product vision
-A premium, fast, trustworthy fashion store (Flipkart/Meesho-style functionality, but simpler and more luxurious) with a powerful CRM that gives the owner control over products, batches, orders, returns, and reviews.
-
-### 1.3 Business goals
+### 1.2 Business goals
 | # | Goal | How the platform supports it |
-|---|------|------------------------------|
-| G1 | Reduce fake/unjustified returns | Structured return workflow, reason + photo proof, packing proof, QC on receipt, customer risk score, category-wise return rules |
-| G2 | Full control of catalog | Variant-based products (color × size), per-variant price & stock, bulk upload |
-| G3 | Traceability | Unique **batch number** per product/lot, shown on invoice and CRM |
-| G4 | Reliable fulfillment | Bigship integration with retry, label, tracking, status sync |
-| G5 | Flexible payments | Razorpay online + COD with admin ON/OFF switch and rules |
-| G6 | Trust & social proof | Verified-buyer reviews with admin moderation (hide/show/reply) |
-| G7 | Engagement without paid messaging | **In-house** push + in-app notifications (no SMS/WhatsApp dependency) |
-| G8 | Premium brand experience | Luxury design system built from the Younora logo |
+|---|---|---|
+| G1 | Full catalog control | Variant products (color × size), per-variant price/stock, bulk import |
+| G2 | Traceability | Unique **batch number** per lot, on invoice, **searchable in CRM and by customers** |
+| G3 | Reliable fulfilment | Bigship integration with retry, label, tracking sync |
+| G4 | Flexible payments | Razorpay + COD with admin toggle and rules |
+| G5 | **Reselling income** | Resellers set a margin, share a link, earn into a wallet; separate Reselling Invoice |
+| G6 | Return control without a return module | Manual Returns Register keeps stock, refunds, batch data and reseller earnings consistent |
+| G7 | Trust | Verified-buyer reviews with admin moderation |
+| G8 | Engagement | In-app notifications (bell + real-time), no SMS/WhatsApp cost |
+| G9 | Premium brand | Luxury design system from the Younora logo |
 
-### 1.4 Users & roles
+### 1.3 Roles
 | Role | Surface | Capabilities |
-|------|---------|--------------|
-| **Customer** | Storefront | Browse, search, wishlist, cart, checkout, track orders, return/exchange, review, notifications |
-| **Guest** | Storefront | Browse, cart; login/signup at checkout `[CONFIRM guest checkout]` |
-| **Super Admin (Owner)** | CRM | Everything incl. staff, settings, payments, COD toggle |
-| **Staff** | CRM | Permission-based (e.g., products only, orders only, returns only) |
+|---|---|---|
+| Guest | Storefront | Browse, cart, batch search, open reseller share links, checkout `[CONFIRM guest checkout]` |
+| Customer | Storefront | Shop, orders, wishlist, reviews, addresses |
+| **Reseller** | Storefront "Reselling" area | A customer with `resellerStatus = APPROVED`. Create share links with margin, see own orders/earnings/wallet, request payout |
+| Super Admin | CRM | Everything |
+| Staff | CRM | Permission-based (see §26.1) |
 
-### 1.5 Out of scope for v1 (listed in roadmap)
-Mobile native app, multi-vendor marketplace, multi-warehouse, multi-language, loyalty points, ERP/accounting sync.
+### 1.4 Out of scope for v1
+Native app, multi-vendor, multi-warehouse, multi-language, loyalty points, ERP sync, in-app return requests/exchange, risk scoring, Web Push (optional later phase), automatic payouts.
 
 ---
 
-## 2. Scope: Features Master List
+## 2. Agent Operating Protocol (MANDATORY)
 
-### 2.1 CRM (Admin) features
-**Dashboard**
-- Today/7d/30d sales, orders by status, revenue, AOV, top products, top categories, low-stock alerts, pending returns, pending reviews, COD vs prepaid split, return rate.
+> **The Antigravity agent must follow this section exactly, every phase, without being re-prompted.** If this file and a chat message conflict, stop and ask the owner. `PROJECT_RULES.md` must contain a copy of §2 and §3.
 
-**Catalog**
-- Audience (Men / Women / Kids), Category, Sub-category (3-level tree), attributes (fabric, fit, pattern, occasion, sleeve, neck, etc.)
-- Product create/edit with: name, description, brand, material, care instructions, country of origin, HSN, GST%, size chart, return policy, tags, SEO fields, status (draft/active/hidden), images per color, video (optional)
-- Variants: color × size with SKU, barcode, MRP, selling price, cost price, stock, low-stock threshold, weight/dimensions (for Bigship)
-- Bulk import/export via Excel/CSV, duplicate product, bulk status/price update
-- Size chart templates (reusable per category)
+### 2.1 Trigger
+The owner starts work by saying **"Start Phase <ID>"** (for example "Start Phase B2"). The agent then works only on that phase, using the phase's section in §17 or §18 as the full specification.
 
-**Inventory & Batches**
-- Unique **batch number** per product/lot (auto-generated + editable `[CONFIRM]`)
-- Receive stock into batch (supplier, qty, cost, manufacture date)
-- Stock movement ledger (every change audited)
-- Low-stock & out-of-stock reports, batch-wise stock & sales report
+### 2.2 The six-step loop (never skip, never reorder)
 
-**Orders**
-- List/filter/search, order detail, change status, manual order (phone/WhatsApp orders), invoice PDF (with batch no.), packing slip, shipping label, retry shipment, cancel, notes/timeline
-- COD confirmation status, packing proof upload
+**STEP 1 — Read.** Read `docs/PLAN.md` (this file), `PROJECT_RULES.md`, `docs/phases/PROGRESS.md` and the previous phase's sign-off. Confirm the previous phase is signed off. If not, say so and stop.
 
-**Shipping (Bigship)**
-- Serviceability by pincode, shipment creation, AWB, label, pickup request, tracking sync, NDR/RTO visibility, courier & rate display
+**STEP 2 — Phase Briefing (NO CODE).** Reply with a briefing in this exact structure:
+1. **Phase goal** (2–3 sentences, plain language)
+2. **What will be built** (modules, models, endpoints/screens)
+3. **File list** (every file to create or change, by path)
+4. **New packages** (name, version, reason; "none" if none)
+5. **Environment variables** added
+6. **Test plan** (the specific tests, mapped to the phase's test checklist)
+7. **Manual checks** the owner should do (Postman or UI steps)
+8. **Risks / assumptions / open questions** (anything unclear in the plan)
+9. **Explicitly out of scope** for this phase
+10. **Slices** (the internal build order, 3–6 slices)
 
-**Payments**
-- Razorpay settings status, **COD ON/OFF toggle**, COD rules (min/max order value, pincode block-list, COD fee), refund management
+**STEP 3 — Ask permission.** End the briefing with exactly: **"Shall I start writing code for Phase <ID>? (yes / change plan)"** and **STOP**. Write no code until the owner answers yes.
 
-**Returns Desk**
-- Return/exchange requests with reason + photos, approve/reject (with reason), pickup scheduling (Bigship reverse), QC result (resellable/damaged/wrong item), refund (full/partial), restock, return analytics by reason/batch/customer
+**STEP 4 — Implement.** After "yes", build the **entire phase** slice by slice without asking again, unless blocked by a genuine ambiguity or a missing credential. After each slice, run `npm run lint` and `npm test`, fix failures, then continue. Rules during implementation:
+- Follow §3 Engineering Rules strictly. Touch only files that belong to this phase.
+- Do not add libraries beyond the briefing without asking.
+- Never run git commands, never commit, never tag, never push. The owner does that.
+- If the plan needs a deviation, stop, explain, and wait for the owner's answer.
+- Reference code from the old Green Tree backend (folder `reference/`) is **read-only**. Read it for ideas; rewrite to our rules. Never copy `.env` values.
 
-**Reviews**
-- List all, filter (rating, product, status), **hide/show**, delete, admin reply, mark as verified/unverified, reported reviews, banned-word auto-hide
+**STEP 5 — Verify and sign off.** When all slices are done:
+1. Run the full lint and test suites and show the real output summary.
+2. Create `docs/phases/<ID>-signoff.md` using the template in §26.3, filled in honestly (tests run, manual checks for the owner, known issues, deferred items).
+3. Update `docs/phases/PROGRESS.md`, the module README files, and the Postman/OpenAPI files for new endpoints.
+4. Update this plan's Decision Log (§25) if any decision changed.
 
-**Customers**
-- List, order history, return rate, **risk score/flag**, block/unblock, COD restriction per customer, notes
+**STEP 6 — Hand over, then STOP.** Final message must contain, in this order:
+1. **Summary** (what was built, test counts, anything deferred)
+2. **Owner manual checklist** (short list)
+3. **Commit message** and **tag command**, together, in one copy-paste block (format in §22.3)
+4. The line: **"Phase <ID> is complete. Waiting for your 'Start Phase <next ID>'."**
 
-**Marketing/CMS**
-- Banners (home slider), homepage sections/collections, coupons (percent/flat, min cart, category/product scope, usage limits, expiry), announcement bar, static pages (About, Policies, FAQs)
+Then do nothing further. The agent never starts the next phase on its own.
 
-**Settings**
-- Store info, GST details, invoice settings (prefix, footer), shipping settings, return policy defaults, tax slabs, notification preferences, staff & roles
-
-**Notifications (CRM side)**
-- Real-time bell: new order, payment failed, low stock, return requested, new review, shipment failed
-
-### 2.2 Storefront (Customer) features
-- Home (hero banners, collections, new arrivals, best sellers, audience tiles)
-- Category / sub-category listing with filters (size, color, price, fabric, rating, discount, availability) + sorting + pagination/infinite scroll
-- Search with suggestions
-- Product page: gallery per color, color swatches, size selector (out-of-stock sizes disabled), size chart, price (MRP/discount), pincode delivery check, highlights, care, reviews & rating summary, similar products, share
-- Wishlist, cart (variant-aware), coupons, price breakup (items, discount, GST, shipping, COD fee)
-- Checkout: address, payment (Razorpay/COD if enabled), order summary
-- Orders: list, detail, tracking timeline, invoice download (shows batch no.), cancel, **return/exchange request with photo upload**
-- Reviews (verified buyers only; photos allowed)
-- Account: profile, addresses, notifications
-- **Push notifications + in-app notification center** (PWA)
-- Policy pages, contact/enquiry form
+### 2.3 Hard guardrails
+- One phase per session. Never begin work for a later phase "while here".
+- Never invent third-party API details (Bigship, Razorpay). Read their official docs at the start of the relevant phase, save sample payloads under `docs/api/samples/`, and mark anything unverified `[VERIFY]` in the briefing.
+- Never trust client input for price, margin, total, stock, discount, role or user id.
+- Never print secrets. Never log tokens, OTPs, passwords or payout details.
+- If tests fail and cannot be fixed within the phase, report plainly. Do not mark the phase done.
 
 ---
 
 ## 3. Engineering Rules
-*(Paste this section into Antigravity at the start of every session.)*
+*(Copy into `PROJECT_RULES.md`.)*
 
-1. **Modular monolith.** One backend, strictly separated modules under `src/modules/<name>/`. Modules talk through **service functions** or the **event bus**, never by reaching into each other's models directly (except read-only populates).
-2. **Layering:** `route → validation → controller → service → repository/model`. Controllers are thin (parse request, call service, send response). **All business logic lives in services.**
-3. **Validation:** every input validated with **Zod** at route level. Never trust client-sent prices, totals, stock, discounts, or user IDs.
-4. **Money:** store all money in **paise (integer)**. Convert only at the edges (UI, Razorpay uses paise natively). No floating-point math on money.
-5. **Single response format:**
+1. **Modular monolith**, modules under `src/modules/<name>/`, talking through service functions or the event bus, never through each other's models (read-only populate is allowed).
+2. **Layering:** route → Zod validation → controller (thin) → service (all business logic) → model.
+3. **CommonJS** (`require`/`module.exports`). Node 20, Express 5 (async errors forwarded natively).
+4. **Validation:** Zod schemas live in each module's `<name>.validation.js`. Never trust client prices, margins, totals, stock, discounts, roles or user ids.
+5. **Money:** integer **paise** everywhere. No floating-point money math. Convert only at UI edges.
+6. **Response format** (always):
    ```json
    { "success": true, "message": "…", "data": {}, "meta": { "page": 1, "limit": 20, "total": 100 } }
    { "success": false, "message": "…", "code": "STOCK_UNAVAILABLE", "errors": [ { "field": "…", "message": "…" } ] }
    ```
-6. **Errors:** custom `AppError(statusCode, code, message)`; one global error middleware; no `res.status(500).json(error.message)` leaks.
-7. **Async:** `async/await` only; Express 5 forwards async errors natively. No unhandled promise rejections.
-8. **Transactions:** use MongoDB transactions (replica set) for order placement, stock reservation, refunds.
-9. **Idempotency:** payment webhooks, shipment creation, and refund calls must be idempotent (store external IDs, check before acting).
-10. **Config:** all secrets/config in `.env`, loaded and validated once in `config/env.js` (fail fast if missing). No `process.env` scattered through the code.
-11. **Logging:** `pino` structured logger; no `console.log` in committed code; never log secrets, OTPs, tokens, or full card/UPI data.
-12. **Snapshots:** orders store a **snapshot** of product name, SKU, color, size, price, GST, batch number, image at purchase time.
-13. **Soft delete** for catalog and customers (`isDeleted`, `deletedAt`); hard delete only for temp data.
-14. **Naming:** files `kebab-case` or `camelCase` consistently (pick one: **`camelCase.js`** to match old code style is fine), Mongo collections plural, constants `UPPER_SNAKE`, enums in `shared/constants`.
-15. **Tests:** each phase ships with automated tests for its critical logic (pricing, stock, auth, webhooks). No phase is "done" without passing tests.
-16. **Docs:** each module has a short `README.md` (purpose, endpoints, events emitted/consumed) and endpoints are added to the Postman/OpenAPI collection.
-17. **No dead code / commented-out blocks** committed (the old repo has many).
-18. **Small commits**, one logical change per commit, Conventional Commits (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`).
+7. **Errors:** `AppError(statusCode, code, message)` + one global error middleware. 401 = not authenticated, 403 = not permitted, 404, 409, 422 as appropriate. No stack traces to clients.
+8. **Config:** all config via `config/env.js` (Zod-validated, fail fast). No `process.env` elsewhere.
+9. **Logging:** `pino` only. No `console.log`. Never log secrets, tokens, OTPs, passwords, payout details.
+10. **Transactions** for order placement, stock changes, refunds, wallet changes. **Idempotency** for payments, webhooks, shipment creation, refunds, wallet credits.
+11. **Snapshots:** order lines store product name, SKU, color, size, base price, margin, final price, GST, batch number, image at purchase time.
+12. **Soft delete** for catalog and customers. Ledgers (stock, wallet, audit) are **immutable**: corrections are new rows.
+13. **Naming:** files `camelCase.js` with module suffixes (`order.service.js`), collections plural, constants `UPPER_SNAKE`, enums in `packages/shared-constants`.
+14. **Tests:** every phase ships automated tests for its critical logic. A phase without passing tests is not done.
+15. **Docs:** each module has a short `README.md` (purpose, endpoints, events). New endpoints go into the Postman/OpenAPI files.
+16. No dead code, no commented-out blocks, no `console.log`, no secrets in git.
+17. **Small, conventional commits** (see §22). The owner commits; the agent only proposes the message.
 
 ---
 
 ## 4. Brand & Design System
 
-### 4.1 Logo analysis (Younora — "Luxury Fashion")
-The logo is a **gold elegant serif wordmark with calligraphic swashes**, an **orange-amber silk drape**, a **stylized woman with a wide-brim hat**, and **thin gold arcs**, all on a **deep black/espresso silk background**. Mood: *luxurious, feminine, warm, premium, evening-wear*.
+### 4.1 Logo mood
+Gold elegant serif wordmark with calligraphic swashes, amber silk drape, stylised woman with wide-brim hat, on deep black/espresso silk. Mood: luxurious, feminine, warm, premium.
 
-### 4.2 Color palette
-
-#### Brand colors (sampled from the logo)
+### 4.2 Colour tokens
 | Token | Hex | Usage |
-|-------|-----|-------|
-| `--ynr-onyx` | `#0B0705` | Primary dark background, footer, hero overlays |
-| `--ynr-espresso` | `#1A100B` | Dark surfaces, CRM sidebar, cards on dark |
-| `--ynr-cocoa` | `#2C1B11` | Elevated dark surfaces, hover on dark |
-| `--ynr-gold-300` | `#F2CF85` | Highlights, gold gradient light end |
-| `--ynr-gold-500` | `#D9A441` | **Primary brand/accent gold** — buttons, links, icons, borders |
-| `--ynr-gold-700` | `#B07D2A` | Gold hover/pressed, gold text on light backgrounds |
-| `--ynr-amber-500` | `#E8731A` | **Secondary accent (silk orange)** — badges, sale tags, CTA highlights |
-| `--ynr-amber-700` | `#B8470A` | Amber pressed/darker accents |
-| `--ynr-ivory` | `#F8F1E4` | Light page background (storefront), CRM content bg |
-| `--ynr-cream` | `#EFE4D0` | Light surface/section alternation |
-| `--ynr-sand` | `#E7DCC8` | Borders/dividers on light |
-| `--ynr-white` | `#FFFFFF` | Cards on light |
+|---|---|---|
+| `--ynr-onyx` | `#0B0705` | Primary dark background, footer, hero |
+| `--ynr-espresso` | `#1A100B` | CRM sidebar/topbar, dark surfaces |
+| `--ynr-cocoa` | `#2C1B11` | Elevated dark surfaces |
+| `--ynr-gold-300` | `#F2CF85` | Highlights |
+| `--ynr-gold-500` | `#D9A441` | **Primary accent**: buttons, links, borders |
+| `--ynr-gold-700` | `#B07D2A` | Gold on light backgrounds, pressed states |
+| `--ynr-amber-500` | `#E8731A` | Sale badges, CTA highlights |
+| `--ynr-amber-700` | `#B8470A` | Amber pressed |
+| `--ynr-ivory` | `#F8F1E4` | Light page background |
+| `--ynr-cream` | `#EFE4D0` | Alternating sections |
+| `--ynr-sand` | `#E7DCC8` | Borders on light |
+| `--text-on-dark` / `--text-muted-on-dark` | `#F8F1E4` / `#BFAE98` | Text on dark |
+| `--text-on-light` / `--text-muted-on-light` | `#1A100B` / `#6B5A4B` | Text on light |
+| `--success` `--warning` `--danger` `--info` | `#2E7D4F` `#D98E04` `#B3261E` `#2F6F8F` | Semantic states |
 
-#### Text colors
-| Token | Hex | Usage |
-|-------|-----|-------|
-| `--text-on-dark` | `#F8F1E4` | Primary text on dark |
-| `--text-muted-on-dark` | `#BFAE98` | Secondary text on dark |
-| `--text-on-light` | `#1A100B` | Primary text on light |
-| `--text-muted-on-light` | `#6B5A4B` | Secondary text on light |
+Gradients: gold `135deg #F2CF85 → #D9A441 → #B07D2A`; silk `135deg #E8731A → #B8470A`; dark `180deg #1A100B → #0B0705`.
 
-#### Semantic colors (harmonized with the palette)
-| Token | Hex | Usage |
-|-------|-----|-------|
-| `--success` | `#2E7D4F` | Delivered, paid, in-stock |
-| `--warning` | `#D98E04` | Low stock, pending |
-| `--danger` | `#B3261E` | Failed, cancelled, out of stock, delete |
-| `--info` | `#2F6F8F` | Informational, shipped |
+**Accessibility:** gold `#D9A441` fails contrast on ivory for small text; use gold-700 or onyx text on light. Verify WCAG AA (4.5:1).
 
-#### Gradients
-```css
---gradient-gold: linear-gradient(135deg, #F2CF85 0%, #D9A441 45%, #B07D2A 100%);
---gradient-silk: linear-gradient(135deg, #E8731A 0%, #B8470A 100%);
---gradient-dark: linear-gradient(180deg, #1A100B 0%, #0B0705 100%);
-```
-
-### 4.3 Where to use dark vs light
+### 4.3 Surfaces
 | Surface | Theme |
-|---------|-------|
-| **Storefront** | Hybrid: **ivory** content areas with **onyx** header/footer/hero; gold accents; amber for sale/discount badges |
-| **CRM** | **Espresso sidebar + topbar**, **ivory content area**, white cards, gold active states; optional full dark-mode toggle later |
+|---|---|
+| Storefront | Ivory content, onyx header/footer/hero, gold accents, amber sale badges |
+| CRM | Espresso sidebar/topbar, ivory content, white cards, gold active states |
+| Reseller panel | Same as storefront account area, with gold "earnings" accents |
 
-> **Accessibility:** gold `#D9A441` on onyx passes contrast; gold on ivory does **not** for small text — use `--ynr-gold-700` (`#B07D2A`) or onyx text on light backgrounds. Verify with a contrast checker (WCAG AA ≥ 4.5:1 for body text).
-
-### 4.4 Typography
-| Role | Font (Google Fonts) | Notes |
-|------|---------------------|-------|
-| Display / headings (storefront) | **Cormorant Garamond** (or Playfair Display) | Matches the logo's elegant serif |
-| Body / UI | **Inter** or **Jost** | Clean, readable at small sizes |
-| CRM headings | **Inter** (600/700) | Functional clarity for data-heavy screens |
-| Prices/numerals | Inter tabular numerals | Aligned columns |
-
-Scale (rem): `0.75 / 0.875 / 1 / 1.125 / 1.25 / 1.5 / 2 / 2.5 / 3.25`.
-
-### 4.5 UI tokens
-- **Radius:** `4px` (inputs/buttons — keep sharper = more luxurious), `8px` (cards), `999px` (pills/badges)
-- **Spacing:** 4px grid (`4, 8, 12, 16, 24, 32, 48, 64, 96`)
-- **Shadows:** soft warm shadows `0 8px 30px rgba(26,16,11,0.12)`
-- **Borders:** 1px `--ynr-sand`; gold 1px hairlines for luxury accents
-- **Motion:** 200–300ms ease-out; subtle fades/slides; respect `prefers-reduced-motion`
-- **Buttons:** Primary = gold gradient + onyx text; Secondary = onyx outline/gold border; Danger = danger color; Ghost = text only
-- **Badges:** Sale = amber; New = gold outline; Low stock = warning; Out of stock = muted grey
-
-### 4.6 Logo usage
-- Provide: full logo (dark bg), monochrome gold, monochrome onyx (for light backgrounds), icon-only mark (hat-lady/"Y"), favicon (32/180/512), OG-image.
-- Minimum clear space = height of the "Y". Never place on busy/bright backgrounds. Get **SVG** from the client/designer (the shared file is a raster JPEG; extract at higher resolution or vectorize).
+### 4.4 Typography and UI tokens
+- **Headings (storefront):** Cormorant Garamond (or Playfair Display). **Body/UI:** Inter or Jost. **CRM:** Inter. Tabular numerals for prices.
+- Type scale (rem): 0.75 / 0.875 / 1 / 1.125 / 1.25 / 1.5 / 2 / 2.5 / 3.25.
+- Radius: 4px inputs/buttons, 8px cards, 999px pills. Spacing grid 4px. Shadow `0 8px 30px rgba(26,16,11,0.12)`. Border 1px sand. Motion 200–300ms ease-out, respect `prefers-reduced-motion`.
+- Buttons: primary = gold gradient + onyx text; secondary = outline; danger; ghost. Badges: sale = amber, new = gold outline, low stock = warning, out of stock = muted grey.
+- Logo: get SVG from client. Provide full-colour (dark bg), mono gold, mono onyx, icon mark, favicon set, OG image.
 
 ---
 
 ## 5. System Architecture
 
-### 5.1 High-level architecture
+### 5.1 High-level diagram
 ```mermaid
 flowchart TB
   subgraph Clients
-    SF["Storefront (Next.js PWA)"]
-    CRM["CRM Admin (React + Vite)"]
+    SF["Storefront - Next.js incl. Reseller panel"]
+    CRM["CRM Admin - React + Vite"]
   end
 
-  subgraph Backend["Backend API (Node + Express, modular monolith)"]
-    GW["API Layer: routes, auth, validation, rate limit"]
-    MOD["Modules: auth, catalog, inventory, cart, checkout, orders, payments, shipping, returns, reviews, coupons, cms, notifications, reports"]
-    BUS["Internal Event Bus"]
-    JOBS["Job Workers (BullMQ)"]
-    RT["Realtime: Socket.IO + Web Push"]
+  subgraph Backend["Backend API - Node + Express 5 modular monolith"]
+    API["API layer: routes, auth, validation, rate limit"]
+    MOD["Modules: auth, users, catalog, inventory, cart, pricing, coupons, checkout, orders, payments, shipping, reselling, manual-returns, reviews, notifications, cms, reports, settings, audit"]
+    BUS["Internal event bus"]
+    JOBS["Job runner: jobs collection + node-cron"]
+    RT["Socket.IO realtime"]
   end
 
   subgraph Data
-    DB[("MongoDB Atlas (replica set)")]
-    REDIS[("Redis: queues, cache, rate limits")]
-    CDN[("Cloudinary: images/video")]
+    DB[("MongoDB Atlas replica set")]
+    CDN[("Cloudinary media")]
   end
 
   subgraph External
     RZP["Razorpay"]
     BIG["Bigship"]
-    MAIL["Email (SMTP/Nodemailer) - transactional only"]
-    PUSH["Browser Push Services (VAPID / Web Push)"]
+    MAIL["Email SMTP via Nodemailer"]
   end
 
-  SF --> GW
-  CRM --> GW
-  GW --> MOD
+  SF --> API
+  CRM --> API
+  API --> MOD
   MOD <--> BUS
   BUS --> JOBS
   BUS --> RT
   MOD --> DB
   JOBS --> DB
-  MOD --> REDIS
-  JOBS --> REDIS
   MOD --> CDN
   MOD <--> RZP
   JOBS <--> BIG
   JOBS --> MAIL
-  RT --> PUSH
   RT --> SF
   RT --> CRM
-  RZP -- webhook --> GW
-  BIG -- webhook/poll --> GW
+  RZP -- webhook --> API
+  BIG -- webhook or poll --> API
 ```
 
 ### 5.2 Technology decisions
 | Layer | Choice | Reason |
-|-------|--------|--------|
-| Runtime | Node.js 20 LTS+ | Stable, matches old codebase |
-| Framework | Express 5 | Already used; native async error handling |
-| DB | MongoDB Atlas + Mongoose 8 | Flexible variants; transactions need replica set (Atlas provides) |
-| Validation | Zod | Schema reuse in frontend via shared package |
-| Auth | JWT access (short) + refresh token (httpOnly cookie, rotated) | Secure, SPA-friendly |
-| Password | bcrypt (or argon2) | Existing bcrypt usage |
-| Queue/Jobs | BullMQ + Redis | Retries, delays, scheduling (shipment retry, expiry, reminders). *Fallback if Redis is unwanted: DB-backed job collection + node-cron.* |
-| Realtime | Socket.IO (CRM live bell + storefront in-app) | In-house, no paid service |
-| Push | `web-push` (VAPID) + service worker | In-house browser push, no third-party SaaS `[VERIFY]` |
-| Media | Cloudinary (existing) | Transformations, CDN |
+|---|---|---|
+| Runtime / framework | Node 20, Express 5, CommonJS | Matches old code, native async errors |
+| Database | MongoDB Atlas + Mongoose 8 | Transactions need replica set |
+| Validation | Zod per module | Fail-fast input checking |
+| Auth | JWT access (15 min) + rotating refresh token (httpOnly cookie, hashed in DB) | Secure SPA auth |
+| Passwords | bcryptjs, cost ≥ 12 | No native build on Windows |
+| Background work | `jobs` collection + `node-cron` (1-minute poll) | No Redis in v1; interface allows BullMQ later |
+| Realtime | Socket.IO | In-app bell, no paid service |
+| Media | Cloudinary | Existing, transformations |
 | Payments | Razorpay | Required |
-| Shipping | Bigship via adapter | Required |
-| PDF | `pdfkit` (light) or Puppeteer (HTML template) | Invoice/packing slip/label |
-| Excel | `exceljs` or `xlsx` | Bulk import/export |
-| Logging | `pino` + `pino-http` | Structured logs |
-| Security | `helmet`, `cors` (whitelist), `express-rate-limit`, `express-mongo-sanitize`, `hpp` | Hardening |
-| Tests | Jest + Supertest + `mongodb-memory-server` (replica set mode) | Fast, isolated |
-| CRM FE | React 18 + Vite + React Router + TanStack Query + Zustand/Redux Toolkit + React Hook Form + Zod + TanStack Table | Data-heavy admin |
-| Storefront FE | **Next.js (App Router)** + TanStack Query | SEO, speed, PWA for push |
-| Styling | Tailwind CSS with the design tokens from §4 | Fast, consistent |
-| API docs | OpenAPI (Swagger) + Postman collection | Handoff to frontend |
-
-> **Why Next.js for storefront:** fashion shoppers arrive from Google/Instagram; server-rendered product & category pages rank and load faster. The CRM stays a plain React SPA since SEO is irrelevant there.
+| Shipping | Bigship through provider adapter | Required |
+| Email | Nodemailer (SMTP) | Password reset, verification, invoices only |
+| PDF | pdfkit | Invoices, packing slips |
+| Excel | exceljs | Product import/export, stock receive |
+| Logging | pino + pino-http | Structured |
+| Security | helmet, cors whitelist, express-rate-limit, express-mongo-sanitize, hpp | Hardening |
+| Tests | Jest, Supertest, mongodb-memory-server (replica set) | Fast isolated |
+| CRM | React 18, Vite, React Router, TanStack Query, React Hook Form + Zod, TanStack Table, Tailwind, Recharts | Data-heavy admin |
+| Storefront | Next.js App Router, TanStack Query, Tailwind | SEO + speed |
+| API docs | OpenAPI + Postman | Frontend contract |
 
 ### 5.3 Environments
-`local` → `staging` (client UAT, Razorpay test mode, Bigship sandbox) → `production`.
+`local` → `staging` (client UAT; Razorpay test, Bigship sandbox) → `production`.
 
 ---
 
-## 6. Data Flow Diagrams (DFD)
+## 6. Data Flow Diagrams
 
-### 6.1 DFD Level 0 — Context diagram
+### 6.1 Level 0 — Context
 ```mermaid
 flowchart LR
-  CUST(["Customer"])
+  CUST(["Customer / Buyer"])
+  RES(["Reseller"])
   ADM(["Admin / Staff"])
   RZP(["Razorpay"])
   BIG(["Bigship"])
-  MAIL(["Email Service"])
-  BPUSH(["Browser Push Service"])
+  MAIL(["Email service"])
 
-  SYS(("Younora E-Commerce System"))
+  SYS(("Younora System"))
 
-  CUST -- "browse, cart, order, return, review" --> SYS
+  CUST -- "browse, batch search, order, review" --> SYS
+  RES -- "share links with margin, view earnings, request payout" --> SYS
   SYS -- "catalog, order status, invoices, notifications" --> CUST
-  ADM -- "products, batches, orders, returns, settings" --> SYS
-  SYS -- "reports, alerts, live notifications" --> ADM
+  SYS -- "orders from my links, wallet, payout status" --> RES
+  ADM -- "products, batches, orders, manual returns, resellers, settings" --> SYS
+  SYS -- "reports, alerts" --> ADM
   SYS -- "create payment, refund" --> RZP
   RZP -- "payment status, webhooks" --> SYS
-  SYS -- "create shipment, label, pickup" --> BIG
-  BIG -- "AWB, tracking, status" --> SYS
-  SYS -- "invoice and transactional emails" --> MAIL
-  SYS -- "push payloads" --> BPUSH
-  BPUSH -- "push to customer/admin device" --> CUST
+  SYS -- "create shipment, label" --> BIG
+  BIG -- "AWB, tracking" --> SYS
+  SYS -- "reset, verify, invoice emails" --> MAIL
 ```
 
-### 6.2 DFD Level 1 — Main processes
+### 6.2 Level 1 — Main processes
 ```mermaid
 flowchart TB
-  CUST(["Customer"])
-  ADM(["Admin / Staff"])
+  P1["1 Auth and Accounts"]
+  P2["2 Catalog"]
+  P3["3 Inventory and Batches"]
+  P4["4 Browse, Search, Batch Search"]
+  P5["5 Cart and Pricing"]
+  P6["6 Checkout and Payment"]
+  P7["7 Orders and Invoices"]
+  P8["8 Shipping"]
+  P9["9 Manual Returns Register"]
+  P10["10 Reselling: shares, earnings, wallet, payouts"]
+  P11["11 Reviews"]
+  P12["12 Notifications"]
+  P13["13 CMS, Reports, Settings"]
 
-  P1["1.0 Auth and Accounts"]
-  P2["2.0 Catalog Management"]
-  P3["3.0 Inventory and Batches"]
-  P4["4.0 Browse and Search"]
-  P5["5.0 Cart and Pricing"]
-  P6["6.0 Checkout and Payment"]
-  P7["7.0 Order Management"]
-  P8["8.0 Shipping (Bigship)"]
-  P9["9.0 Returns and Refunds"]
-  P10["10.0 Reviews and Moderation"]
-  P11["11.0 Notifications"]
-  P12["12.0 Reports and Settings"]
+  D1[("Users, Addresses")]
+  D2[("Catalog")]
+  D3[("Batches, Stock ledger")]
+  D4[("Carts, Wishlists")]
+  D5[("Orders, Payments, Invoices")]
+  D6[("Shipments")]
+  D7[("Manual returns")]
+  D8[("Reseller shares, Wallet, Payouts")]
+  D9[("Reviews")]
+  D10[("Notifications")]
+  D11[("Settings, Coupons, CMS")]
 
-  D1[("D1 Users")]
-  D2[("D2 Catalog: products, variants, categories")]
-  D3[("D3 Batches and Stock Ledger")]
-  D4[("D4 Carts and Wishlists")]
-  D5[("D5 Orders and Payments")]
-  D6[("D6 Shipments")]
-  D7[("D7 Returns")]
-  D8[("D8 Reviews")]
-  D9[("D9 Notifications and Push Subscriptions")]
-  D10[("D10 Settings, Coupons, CMS")]
-
-  CUST --> P1 --> D1
-  ADM --> P1
-  ADM --> P2 --> D2
-  ADM --> P3 --> D3
+  P1 --> D1
+  P2 --> D2
+  P3 --> D3
   P3 --> D2
-  CUST --> P4
   D2 --> P4
-  CUST --> P5
+  D3 --> P4
+  P4 --> P5
   P5 <--> D4
-  D2 --> P5
-  D10 --> P5
+  D11 --> P5
   P5 --> P6
-  CUST --> P6
   P6 --> D5
   P6 --> D3
   P6 --> P7
-  ADM --> P7
   P7 <--> D5
   P7 --> P8 --> D6
   P8 --> P7
-  CUST --> P9
-  ADM --> P9
   P9 <--> D7
-  P9 --> D5
   P9 --> D3
-  CUST --> P10
-  ADM --> P10
+  P9 --> D5
+  P9 --> P10
+  P7 --> P10
   P10 <--> D8
-  P7 --> P11
-  P9 --> P11
-  P10 --> P11
-  P3 --> P11
-  P11 --> D9
-  P11 --> CUST
-  P11 --> ADM
-  ADM --> P12
+  P11 <--> D9
+  P7 --> P12
+  P10 --> P12
+  P3 --> P12
   P12 --> D10
-  D5 --> P12
-  D3 --> P12
+  P13 --> D11
+  D5 --> P13
 ```
 
-### 6.3 DFD Level 2 — Checkout & Payment (most critical flow)
+### 6.3 Level 2 — Checkout and payment (with reselling)
 ```mermaid
 sequenceDiagram
   autonumber
-  participant C as Customer (Storefront)
-  participant API as Backend API
-  participant PR as Pricing Service
-  participant INV as Inventory Service
-  participant PAY as Payment Service
+  participant B as Buyer
+  participant API as Backend
+  participant PR as Pricing
+  participant RS as Reselling
+  participant INV as Inventory
+  participant PAY as Payments
   participant RZP as Razorpay
-  participant ORD as Order Service
-  participant Q as Job Queue
+  participant ORD as Orders
+  participant JOB as Job runner
   participant BIG as Bigship
-  participant NOTI as Notification Service
 
-  C->>API: POST /checkout/preview {items[variantId,qty], addressId, coupon}
-  API->>PR: calculate (server-side prices, GST, shipping, coupon)
-  PR-->>API: price breakup
-  API-->>C: breakup + COD allowed? + serviceable?
+  B->>API: POST /checkout/preview items, address, coupon, shareToken?
+  API->>RS: resolve shareToken, validate margin and reseller status
+  API->>PR: price = base + margin per line, GST, shipping, COD fee
+  PR-->>B: breakup (buyer sees one final price)
 
-  C->>API: POST /checkout/place {items, addressId, paymentMethod, coupon, idempotencyKey}
-  API->>PR: recalculate (never trust client totals)
-  API->>INV: reserve stock atomically (per variant, with batch allocation)
+  B->>API: POST /checkout/place with idempotencyKey
+  API->>PR: recalculate on server
+  API->>INV: reserve stock atomically and allocate batches FIFO
   alt stock unavailable
-    INV-->>API: fail
-    API-->>C: 409 STOCK_UNAVAILABLE
+    API-->>B: 409 STOCK_UNAVAILABLE
   else reserved
-    alt paymentMethod = ONLINE
-      API->>ORD: create order (status=PENDING_PAYMENT, expiresAt)
+    alt ONLINE
+      API->>ORD: create order PENDING_PAYMENT with expiresAt
       API->>PAY: create Razorpay order
-      PAY->>RZP: orders.create(amount paise)
-      RZP-->>PAY: rzpOrderId
-      API-->>C: rzpOrderId + key
-      C->>RZP: pay (Razorpay checkout)
-      RZP-->>C: payment_id + signature
-      C->>API: POST /payments/verify (for instant UI)
-      RZP-->>API: webhook payment.captured (SOURCE OF TRUTH)
-      API->>PAY: verify webhook signature + idempotency
-      PAY->>ORD: mark PAID, order CONFIRMED
-    else paymentMethod = COD
-      API->>API: check COD enabled + rules + customer risk
-      API->>ORD: create order (status=CONFIRMED, payment=COD_PENDING)
+      PAY->>RZP: orders.create
+      B->>RZP: pay
+      RZP-->>API: webhook payment.captured SOURCE OF TRUTH
+      API->>ORD: mark PAID and CONFIRMED
+    else COD
+      API->>API: check COD toggle and rules
+      API->>ORD: create order CONFIRMED with COD_PENDING
     end
-    ORD->>Q: enqueue create-shipment job
-    ORD->>NOTI: emit order.placed
-    NOTI-->>C: in-app + push "Order placed"
-    NOTI-->>API: admin real-time alert "New order"
-    Q->>BIG: create shipment (retry with backoff on failure)
-    BIG-->>Q: AWB, label
-    Q->>ORD: attach shipment, status=READY_TO_SHIP
+    ORD->>ORD: generate internal invoice, and Reselling Invoice if reseller order
+    ORD->>JOB: enqueue create-shipment job
+    JOB->>BIG: create shipment with retry and backoff
+    BIG-->>JOB: AWB and label
+    JOB->>ORD: READY_TO_SHIP
   end
 ```
 
-### 6.4 Return & Refund flow
+### 6.4 Reselling flow
 ```mermaid
-flowchart TD
-  A["Customer opens order (delivered)"] --> B{"Within return window and item returnable?"}
-  B -- No --> X["Show policy message"]
-  B -- Yes --> C["Select item, reason, upload photos, choose Refund or Exchange"]
-  C --> D["Return request created: REQUESTED"]
-  D --> N1["Notify admin (CRM bell)"]
-  D --> E{"Admin review"}
-  E -- Reject --> F["REJECTED with reason, notify customer"]
-  E -- Approve --> G["APPROVED, schedule reverse pickup via Bigship"]
-  G --> H["PICKED_UP, IN_TRANSIT, RECEIVED at warehouse"]
-  H --> I{"QC check by staff"}
-  I -- "Resellable" --> J["Restock to batch, refund/exchange"]
-  I -- "Damaged or wrong item or used" --> K["Reject or partial refund, notify customer, flag in risk score"]
-  J --> L["Refund via Razorpay (or COD: bank/UPI/store credit)"]
-  L --> M["COMPLETED, update customer return-rate"]
-  K --> M
+sequenceDiagram
+  autonumber
+  participant R as Reseller
+  participant API as Backend
+  participant A as Admin
+  participant B as Buyer
+  participant JOB as Job runner
+
+  R->>API: POST /reseller/apply
+  A->>API: approve reseller
+  R->>API: POST /reseller/shares product + margin
+  API->>API: validate margin within admin limits, create token
+  API-->>R: share link /s/token
+  R->>B: sends link
+  B->>API: GET /store/share/token
+  API-->>B: product page showing base + margin as ONE price
+  B->>API: places order (see 6.3)
+  API->>API: order stores reselling base, margin, reseller, share
+  Note over API: order DELIVERED
+  API->>API: wallet entry EARNING status PENDING, availableOn = delivered + holdDays
+  JOB->>API: release job moves PENDING to AVAILABLE
+  R->>API: POST /reseller/payouts
+  A->>API: pays outside app, marks PAID with reference
+  Note over API: manual return recorded later: wallet REVERSAL for returned items
 ```
 
-### 6.5 Notification flow
+### 6.5 Manual return flow
+```mermaid
+flowchart TD
+  A["Customer contacts owner by phone or WhatsApp"] --> B["Owner agrees return or refund offline"]
+  B --> C["Staff opens CRM Manual Returns and records order, items, reason, condition"]
+  C --> D{"Restock?"}
+  D -- Yes --> E["Qty returned to ORIGINAL batch, ledger RETURN_RESTOCK"]
+  D -- No, damaged --> F["Batch damaged count increased, ledger DAMAGE"]
+  E --> G{"Refund?"}
+  F --> G
+  G -- "Razorpay" --> H["Refund API call, idempotent, stored on return"]
+  G -- "UPI or Bank" --> I["Staff pays outside app, records reference"]
+  G -- None --> J["No refund"]
+  H --> K["If reseller order: wallet REVERSAL for returned items"]
+  I --> K
+  J --> K
+  K --> L["Audit log + order item status RETURNED"]
+```
+
+### 6.6 Order state machine
+```mermaid
+stateDiagram-v2
+  [*] --> PENDING_PAYMENT
+  PENDING_PAYMENT --> CONFIRMED : payment captured or COD
+  PENDING_PAYMENT --> CANCELLED : expired or failed
+  CONFIRMED --> PACKED
+  CONFIRMED --> CANCELLED
+  PACKED --> READY_TO_SHIP
+  PACKED --> CANCELLED
+  READY_TO_SHIP --> SHIPPED
+  READY_TO_SHIP --> CANCELLED
+  SHIPPED --> OUT_FOR_DELIVERY
+  SHIPPED --> RTO
+  OUT_FOR_DELIVERY --> DELIVERED
+  OUT_FOR_DELIVERY --> RTO
+  DELIVERED --> COMPLETED
+  RTO --> [*]
+  CANCELLED --> [*]
+  COMPLETED --> [*]
+```
+
+### 6.7 Stock and batch flow
 ```mermaid
 flowchart LR
-  EV["Domain Event (order.placed, return.requested, stock.low, review.created ...)"] --> BUS["Event Bus"]
-  BUS --> RULES["Notification Rules: who, template, channels, preferences"]
+  RCV["Receive stock into batch"] --> STK["Variant stock + batch item qtyAvailable"]
+  STK --> RSV["Checkout reserves stock FIFO by batch"]
+  RSV --> SOLD["Order confirmed: reserved becomes sold, batchNo snapshotted on order line"]
+  RSV --> REL["Cancel or expiry: release back to batch"]
+  SOLD --> RET["Manual return: restock to original batch"]
+  SOLD --> DMG["Manual return damaged: batch damaged count"]
+  STK --> LOW["Low or out of stock event"]
+  LOW --> NOTI["Admin notification"]
+```
+
+### 6.8 Notification flow
+```mermaid
+flowchart LR
+  EV["Domain event: order.placed, stock.low, review.created, reseller.applied, payout.requested ..."] --> BUS["Event bus"]
+  BUS --> RULES["Templates and recipient rules"]
   RULES --> DBN[("notifications collection")]
-  RULES --> SIO["Socket.IO (online users) real-time"]
-  RULES --> WP["Web Push sender (offline users) via VAPID"]
-  SIO --> UI["In-app bell / toast"]
-  WP --> SW["Service Worker on device shows OS notification"]
-  UI --> READ["Mark read / click-through to deep link"]
-  SW --> READ
+  RULES --> SIO["Socket.IO room: customer id, admin id, permission"]
+  SIO --> UI["Bell and toast"]
+  UI --> READ["Mark read and deep link"]
 ```
 
 ---
 
 ## 7. Database Design
 
-> Money fields are **integers in paise**. All collections have `createdAt/updatedAt`. Indexes listed per collection are required.
+> All money = **integer paise**. All collections have `createdAt`/`updatedAt`. Indexes listed are required.
 
 ### 7.1 ER overview
 ```mermaid
@@ -529,1187 +526,825 @@ erDiagram
   CUSTOMER ||--o{ ADDRESS : has
   CUSTOMER ||--o{ ORDER : places
   CUSTOMER ||--o{ REVIEW : writes
-  CUSTOMER ||--o{ WISHLIST_ITEM : saves
-  CUSTOMER ||--|| CART : owns
-  CUSTOMER ||--o{ PUSH_SUBSCRIPTION : registers
+  CUSTOMER ||--o{ RESELLER_SHARE : creates
+  CUSTOMER ||--o{ WALLET_TRANSACTION : earns
+  CUSTOMER ||--o{ PAYOUT_REQUEST : requests
+  CUSTOMER ||--o{ REFRESH_TOKEN : owns
   ADMIN_USER ||--o{ AUDIT_LOG : performs
   AUDIENCE ||--o{ CATEGORY : contains
   CATEGORY ||--o{ SUBCATEGORY : contains
   SUBCATEGORY ||--o{ PRODUCT : classifies
   PRODUCT ||--o{ VARIANT : has
+  PRODUCT ||--o{ BATCH : stocked_in
   PRODUCT ||--o{ REVIEW : receives
-  VARIANT ||--o{ BATCH : stocked_in
+  PRODUCT ||--o{ RESELLER_SHARE : shared_as
   BATCH ||--o{ STOCK_MOVEMENT : logs
   ORDER ||--|{ ORDER_ITEM : contains
   ORDER ||--o| SHIPMENT : fulfilled_by
   ORDER ||--o{ PAYMENT : paid_by
-  ORDER ||--o{ RETURN_REQUEST : may_have
+  ORDER ||--o{ INVOICE : has
+  ORDER ||--o{ MANUAL_RETURN : may_have
+  ORDER }o--o| RESELLER_SHARE : attributed_to
   ORDER_ITEM }o--|| VARIANT : snapshot_of
   ORDER_ITEM }o--|| BATCH : allocated_from
-  RETURN_REQUEST ||--o| SHIPMENT : reverse_pickup
-  NOTIFICATION }o--|| CUSTOMER : to
-  NOTIFICATION }o--|| ADMIN_USER : to
+  WALLET_TRANSACTION }o--|| ORDER : from
+  PAYOUT_REQUEST ||--o{ WALLET_TRANSACTION : settles
 ```
 
-### 7.2 Collections (field-level spec)
+### 7.2 Collections
 
-#### `admin_users` (CRM staff — separate from customers)
+#### `admin_users`
 ```
-name, email (unique), passwordHash, role: SUPER_ADMIN|STAFF,
-permissions: [ "products.read","products.write","orders.read","orders.write",
-               "returns.manage","reviews.manage","customers.read","settings.manage", ... ],
-isActive, lastLoginAt, refreshTokens[]
+name, email (unique, lowercase), passwordHash (select:false), role: SUPER_ADMIN|STAFF,
+permissions[] (from shared-constants), isActive, lastLoginAt, passwordChangedAt,
+failedAttempts, lockUntil
 ```
-
 #### `customers`
 ```
-name, email (unique sparse), phone (unique sparse), passwordHash?, authProviders[],
-gender?, dob?, isBlocked, blockReason?,
-codRestricted (bool),
-stats: { totalOrders, deliveredOrders, cancelledOrders, returnedOrders, rtoOrders, returnRate },
-riskScore (0–100), riskFlag: NONE|WATCH|HIGH,
-emailVerified, phoneVerified, notificationPrefs: { orders, offers, returns, reviews }
+name, email (unique sparse, lowercase), phone (unique sparse), passwordHash (select:false),
+gender?, dob?, isBlocked, blockReason?, codRestricted,
+emailVerified, phoneVerified, emailVerifyTokenHash?, resetTokenHash?, resetTokenExpiresAt?,
+failedAttempts, lockUntil, lastLoginAt, passwordChangedAt,
+stats { totalOrders, deliveredOrders, cancelledOrders },
+notificationPrefs { orders, offers },
+// reselling (single source of truth = resellerStatus; isReseller is a virtual = status === APPROVED)
+resellerStatus: NONE|PENDING|APPROVED|REJECTED|SUSPENDED (default NONE),
+resellerCode (unique sparse), resellerBusinessName?, payoutDetails (ENCRYPTED: upi / bank / pan),
+isDeleted, deletedAt
 ```
-
+#### `refresh_tokens`
+```
+userType: ADMIN|CUSTOMER, user, tokenHash (SHA-256, never the raw token), family,
+replacedByTokenHash?, replacedAt?, revokedAt?, expiresAt (TTL index), userAgent, ip
+```
+Rules: rotate on every refresh; reuse of a rotated token outside the 10-second grace window revokes the whole family; max 10 active sessions per user.
 #### `addresses`
 ```
-customer, name, phone, line1, line2, landmark, city, state, pincode, country="IN",
-type: HOME|WORK|OTHER, isDefault
+customer, name, phone, line1, line2, landmark, city, state, pincode (6 digits), country="IN",
+type: HOME|WORK|OTHER, isDefault        // max 10 per customer
 ```
-
 #### `audiences` / `categories` / `subcategories`
 ```
 audience:    name (Men|Women|Kids), slug, image, sortOrder, isActive
-category:    audience, name, slug, image, sortOrder, isActive, defaultSizeChart?, returnPolicy?
+category:    audience, name, slug, image, sortOrder, isActive, defaultSizeChart?
 subcategory: category, name, slug, image, sortOrder, isActive
 ```
-> Replace the old string-based `category/subCategory` with **ObjectId references**.
-
-#### `attributes` (optional master data for filters)
+#### `attributes`, `size_charts`
 ```
-type: COLOR|SIZE|FABRIC|FIT|PATTERN|OCCASION|SLEEVE|NECK ..., name, value (hex for color), sortOrder
+attribute: type (COLOR|FABRIC|FIT|PATTERN|OCCASION|SLEEVE|NECK), name, value, sortOrder
+size_chart: name, category?, unit: INCH|CM, columns[], rows[{ size, values{} }]
 ```
-
-#### `size_charts`
+#### `products`
 ```
-name, category?, unit: INCH|CM, columns: ["Chest","Waist","Length"...],
-rows: [ { size: "M", values: { Chest: 38, Waist: 32, Length: 27 } } ]
-```
-
-#### `products` (parent)
-```
-name, slug (unique), description, highlights[],
-audience, category, subcategory, brand="Younora",
-material/fabric, fit, pattern, occasion, careInstructions, countryOfOrigin,
-hsnCode, gstPercent, sizeChart,
-returnPolicy: { returnable: bool, returnWindowDays, exchangeOnly: bool, reasonRequired: true },
-tags[], seo: { title, description, keywords },
-colors: [ { name, hex, images: [ {url, publicId, alt, sortOrder} ], video? } ],
-priceRange: { minSelling, maxSelling, minMrp, maxMrp },   // denormalized from variants
-rating: { avg, count, breakdown: {1..5} },                // denormalized from reviews
-totalStock (denormalized),
+name, slug (unique), description, highlights[], audience, category, subcategory, brand="Younora",
+fabric, fit, pattern, occasion, careInstructions, countryOfOrigin,
+hsnCode, gstPercent, sizeChart, tags[], seo{title,description,keywords},
+returnPolicyText?   // display only; returns are manual
+colors[{ name, hex, images[{url,publicId,alt,sortOrder}], video? }],
+priceRange{minSelling,maxSelling,minMrp,maxMrp}, rating{avg,count,breakdown}, totalStock,
 status: DRAFT|ACTIVE|HIDDEN, isFeatured, isNewArrival, isBestSeller,
-isDeleted
+resellingEnabled (bool, default true), isDeleted
 ```
-Indexes: `slug`, `{audience,category,subcategory,status}`, text index on `name,tags,description`, `{status,createdAt}`.
-
-#### `variants` (the sellable unit: color × size)
+Indexes: `slug`, `{audience,category,subcategory,status}`, text(`name,tags,description`), `{status,createdAt}`.
+#### `variants`
 ```
-product, sku (unique), barcode?,
-color: { name, hex }, size: "S|M|L|XL|...|Free" ,
-mrp, sellingPrice, costPrice,                // paise; price can differ per size/color
-stock (available), reservedStock, lowStockThreshold,
-weightGrams, lengthCm, breadthCm, heightCm,  // for Bigship
-isActive
+product, sku (unique), barcode?, color{name,hex}, size,
+mrp, sellingPrice (BASE price), costPrice, stock, reservedStock, lowStockThreshold,
+weightGrams, lengthCm, breadthCm, heightCm, isActive
 ```
-Indexes: `sku`, `{product, color.name, size}` unique, `{product,isActive}`.
-
-#### `batches` (unique batch tracking) 
+Unique `{product,color.name,size}`. `sellingPrice ≤ mrp`.
+#### `batches`
 ```
-batchNo (unique, e.g. "YNR-2611-WMN-0001"),
-product, variant?,                      // per-variant lot or product-level lot [CONFIRM]
-supplier { name, contact, invoiceNo }, manufacturedOn?, receivedOn,
-qtyReceived, qtyAvailable, qtyReserved, qtySold, qtyReturnedResellable, qtyDamaged,
-costPerUnit, notes, status: ACTIVE|EXHAUSTED|QUARANTINED
+batchNo (unique), product, receivedOn, supplier{name,ref}, costPerUnit?,
+items[{ variant, qtyReceived, qtyAvailable, qtyReserved, qtySold, qtyReturned, qtyDamaged }],
+status: ACTIVE|EXHAUSTED|QUARANTINED, notes
 ```
-Allocation policy `[CONFIRM]`: **FIFO** (oldest batch first) by default.
-
-#### `stock_movements` (immutable ledger)
+#### `stock_movements` (immutable)
 ```
 variant, batch, type: RECEIVE|RESERVE|RELEASE|SALE|RETURN_RESTOCK|DAMAGE|ADJUST|CANCEL,
-qty (+/-), balanceAfter, refType (ORDER|RETURN|MANUAL), refId, actor, note
+qty (+/-), balanceAfter, refType: ORDER|MANUAL_RETURN|MANUAL, refId, actor, note
 ```
-
-#### `carts`
+#### `carts`, `wishlists`
 ```
-customer, items: [ { variant, qty, addedAt } ], couponCode?, updatedAt, abandonedNotifiedAt?
+cart: customer, items[{ variant, qty, addedAt }], couponCode?, shareToken?   // prices never stored
+wishlist: customer, product, addedAt   // unique {customer, product}
 ```
-> Prices are NOT stored in cart; always recomputed from the variant.
-
-#### `wishlists`
-```
-customer, product, addedAt     (unique {customer, product})
-```
-
 #### `orders`
 ```
-orderNo (e.g. "YNR-2611-000123"), invoiceNo (assigned on confirm/ship),
-customer, 
-items: [ OrderItem snapshot: {
-   product, variant, name, sku, color, size, image,
-   batchNo, batch (ref),
-   mrp, sellingPrice, qty, discount, taxableValue, gstPercent, gstAmount, lineTotal, hsnCode,
-   returnPolicySnapshot, itemStatus: ACTIVE|CANCELLED|RETURN_REQUESTED|RETURNED|EXCHANGED
-}],
-shippingAddress {...snapshot}, billingAddress {...snapshot}, customerSnapshot {name, email, phone},
-pricing: { itemsTotal, discount, couponCode, couponDiscount, taxableAmount, gstTotal(cgst/sgst/igst), shippingFee, codFee, grandTotal, roundOff },
-payment: { method: ONLINE|COD, status: PENDING|PAID|FAILED|REFUNDED|PARTIAL_REFUND|COD_PENDING|COD_COLLECTED, paidAt },
-status: PENDING_PAYMENT|CONFIRMED|PACKED|READY_TO_SHIP|SHIPPED|OUT_FOR_DELIVERY|DELIVERED|CANCELLED|RTO|COMPLETED,
-statusHistory: [ { status, at, by, note } ],
-codConfirmation: { required, status: PENDING|CONFIRMED|FAILED, at },
-packingProof: [ { url, type: PHOTO|VIDEO, at, by } ],
-shipment (ref), expiresAt (for PENDING_PAYMENT), idempotencyKey (unique), source: WEB|ADMIN,
-notes: [ { by, text, at } ]
+orderNo, customer?, guest{name,email,phone}?, 
+items[{ product, variant, name, sku, color, size, image, hsnCode, gstPercent,
+        batchNo, batch, mrp,
+        baseSellingPrice, marginPerUnit (0 if not reseller order), sellingPrice (= base + margin, what buyer pays),
+        qty, discount, taxableValue, gstAmount, lineTotal,
+        itemStatus: ACTIVE|CANCELLED|RETURNED }],
+shippingAddress{snapshot}, billingAddress{snapshot},
+pricing{ itemsTotal, discount, couponCode, couponDiscount, taxableAmount, gstTotal{cgst,sgst,igst}, shippingFee, codFee, roundOff, grandTotal },
+payment{ method: ONLINE|COD, status: PENDING|PAID|FAILED|REFUNDED|PARTIAL_REFUND|COD_PENDING|COD_COLLECTED, paidAt },
+status, statusHistory[{status,at,by,note}],
+codConfirmation{required,status,at}, packingProof[{url,type,at,by}],
+reselling{ isResellerOrder, reseller, share, baseAmount, marginTotal, buyerAmount },
+invoices[ref], shipment (ref), expiresAt, idempotencyKey (unique), source: WEB|ADMIN, notes[]
 ```
-Indexes: `orderNo`, `customer+createdAt`, `status+createdAt`, `idempotencyKey`, `payment.status`.
-
+Indexes: `orderNo`, `customer+createdAt`, `status+createdAt`, `idempotencyKey`, `reselling.reseller+createdAt`.
 #### `payments`
 ```
 order, method, provider: RAZORPAY|COD, amount, currency,
-razorpayOrderId, razorpayPaymentId, razorpaySignature,
-status: CREATED|AUTHORIZED|CAPTURED|FAILED|REFUNDED|PARTIAL_REFUND,
-refunds: [ { razorpayRefundId, amount, status, reason, at, return? } ],
-rawWebhookEvents: [ { eventId, type, receivedAt } ]       // idempotency
+razorpayOrderId, razorpayPaymentId, status: CREATED|AUTHORIZED|CAPTURED|FAILED|REFUNDED|PARTIAL_REFUND,
+refunds[{ razorpayRefundId, amount, status, reason, at, manualReturn? }], webhookEvents[{ eventId, type, receivedAt }]
 ```
-Indexes: unique sparse on `razorpayPaymentId`, `razorpayOrderId`.
-
+#### `invoices`
+```
+order, type: INTERNAL|RESELLING, number (INV/2627/00001 or RINV/2627/00001),
+financialYear, pdfUrl, issuedTo: { name, address, gstin? }, totals{...}, generatedAt
+```
+INTERNAL = Younora's own invoice (base price, batch per line). RESELLING = addressed to the buyer at final price with hidden fields stripped.
 #### `shipments`
 ```
-order, type: FORWARD|REVERSE, provider: "BIGSHIP",
-bigshipOrderId, awb, courier, courierId?, labelUrl, manifestUrl, trackingUrl,
-status (normalized): CREATED|PICKUP_SCHEDULED|PICKED_UP|IN_TRANSIT|OUT_FOR_DELIVERY|DELIVERED|NDR|RTO_INITIATED|RTO_DELIVERED|CANCELLED|FAILED,
-rawStatus, trackingEvents: [ { status, location, at, raw } ],
-weight, dimensions, charges { forward, cod, total },
-attempts, lastError, lastSyncedAt, rawResponse
+order, type: FORWARD, provider: BIGSHIP, bigshipOrderId, awb, courier, labelUrl, manifestUrl, trackingUrl,
+status: CREATED|PICKUP_SCHEDULED|PICKED_UP|IN_TRANSIT|OUT_FOR_DELIVERY|DELIVERED|NDR|RTO_INITIATED|RTO_DELIVERED|CANCELLED|FAILED,
+rawStatus, trackingEvents[], weight, dimensions, charges, attempts, lastError, lastSyncedAt
 ```
-
-#### `return_requests`
+#### `manual_returns`
 ```
-returnNo, order, customer, type: RETURN|EXCHANGE,
-items: [ { orderItem, qty, reason: WRONG_SIZE|DEFECTIVE|DAMAGED|WRONG_ITEM|NOT_AS_DESCRIBED|OTHER, comment, photos[], exchangeVariant? } ],
-status: REQUESTED|APPROVED|REJECTED|PICKUP_SCHEDULED|PICKED_UP|RECEIVED|QC_PASSED|QC_FAILED|REFUNDED|EXCHANGE_SHIPPED|COMPLETED|CANCELLED,
-decision { by, at, note, rejectReason },
-qc { by, at, result: RESELLABLE|DAMAGED|USED|WRONG_ITEM, photos[], note },
-refund { method: ORIGINAL|BANK|UPI|STORE_CREDIT, amount, status, razorpayRefundId?, bankDetails? (encrypted) },
-reverseShipment (ref), statusHistory[]
+returnNo, order, items[{ orderItem, qty, reason, condition: RESELLABLE|DAMAGED }],
+restock (bool), refund{ amount, mode: RAZORPAY|UPI|BANK|NONE, status, razorpayRefundId?, reference?, note },
+resellerReversalDone (bool), handledBy, notes, status: OPEN|CLOSED
 ```
-
+#### `reseller_shares`
+```
+reseller, product, token (unique, random), marginPerUnit (paise), isActive, clicks, ordersCount, createdAt
+```
+#### `wallet_transactions` (immutable ledger)
+```
+reseller, type: EARNING|REVERSAL|PAYOUT|ADJUSTMENT, amount (+/-),
+status: PENDING|AVAILABLE|PAID|REVERSED, order, orderItem, availableOn, payoutRequest?, note, idempotencyKey (unique)
+```
+Wallet balances are **always computed** from this ledger.
+#### `payout_requests`
+```
+reseller, amount, status: REQUESTED|PAID|REJECTED, paidRef?, paidAt?, handledBy?, note
+```
 #### `reviews`
 ```
-product, variant?, customer, order (verified purchase), rating(1–5), title, comment, photos[],
-fitFeedback: SMALL|TRUE_TO_SIZE|LARGE (optional, feeds size recommendation),
-status: VISIBLE|HIDDEN|PENDING, hiddenReason?, isVerifiedPurchase,
-adminReply { text, by, at }, reportedCount, helpfulCount
+product, variant?, customer, order, rating, title, comment, photos[], fitFeedback?,
+status: VISIBLE|HIDDEN|PENDING, hiddenReason?, isVerifiedPurchase, adminReply{text,by,at}, reportedCount, helpfulCount
 ```
-Unique: `{customer, product, order}`.
-
+Unique `{customer, product, order}`.
 #### `coupons`
 ```
-code (unique), type: PERCENT|FLAT, value, maxDiscount?, minCartValue, 
-scope: ALL|CATEGORY|PRODUCT, scopeIds[], usageLimit, perUserLimit, usedCount,
-startsAt, expiresAt, isActive, firstOrderOnly?, paymentMethodRestriction?
+code (unique), type: PERCENT|FLAT, value, maxDiscount?, minCartValue, scope: ALL|CATEGORY|PRODUCT, scopeIds[],
+usageLimit, perUserLimit, usedCount, startsAt, expiresAt, isActive, firstOrderOnly?, paymentMethodRestriction?
 ```
-
-#### `banners` / `cms_pages` / `home_sections`
+#### CMS and misc
 ```
-banner: image(desktop/mobile), title, link, position, sortOrder, startsAt, endsAt, isActive
-cms_page: slug, title, content (rich/markdown), isActive
-home_section: type: COLLECTION|PRODUCT_RAIL|BANNER|CATEGORY_TILES, title, config, sortOrder, isActive
+banners: image(desktop,mobile), title, link, position, sortOrder, startsAt, endsAt, isActive
+cms_pages: slug, title, content, isActive
+home_sections: type, title, config, sortOrder, isActive
+enquiries: name, email, phone, message, status: NEW|REPLIED|CLOSED, reply
 ```
-
-#### `settings` (single document / key-value)
+#### `settings` (single document)
 ```
-store { name, email, phone, address, gstin, logo },
-payments { codEnabled, codMinOrder, codMaxOrder, codFee, codBlockedPincodes[], onlineEnabled },
-shipping { freeShippingAbove, flatFee, pickupAddress, defaultPackaging dims },
-returns { defaultWindowDays, allowExchange, requirePhotoProof },
-tax { defaultGstSlabs, pricesInclusiveOfTax },
-invoice { prefix, footerNote, termsText, nextSequence },
-notifications { adminEvents enabled map }
+store{name,email,phone,address,gstin,stateCode,logo},
+payments{ onlineEnabled, codEnabled, codMinOrder, codMaxOrder, codFee, codBlockedPincodes[] },
+shipping{ freeShippingAbove, flatFee, pickupAddress, defaultPackaging },
+returns{ policyText, windowDays },                 // display only
+tax{ pricesInclusiveOfTax },
+invoice{ prefix, footerNote, termsText },
+reselling{ enabled, marginLimitsByCategory{ categoryId: {minPaise, maxPaise|maxPercent} }, defaultMaxMarginPercent=40,
+           priceMayExceedMrp=false, couponsAllowedOnResellerOrders=false, holdDays=7, minPayout, hiddenFields{} },
+notifications{ adminEvents{} }, reviews{ moderationMode: AUTO|HOLD }
 ```
-
-#### `notifications`
+#### `notifications`, `jobs`, `audit_logs`, `counters`
 ```
-recipientType: CUSTOMER|ADMIN, recipient (id), 
-type (ORDER_PLACED, ORDER_SHIPPED, ... ), title, body, icon?, image?, deepLink,
-data {...}, channels: { inApp: bool, push: bool }, 
-readAt?, pushStatus: SENT|FAILED|SKIPPED, createdAt
-```
-TTL index to purge after e.g. 90 days.
-
-#### `push_subscriptions`
-```
-recipientType, recipient, endpoint (unique), keys { p256dh, auth }, userAgent, 
-isActive, lastSuccessAt, failureCount
-```
-
-#### `audit_logs`
-```
-actor (admin), action ("product.update", "order.status", "cod.toggle"...), entity, entityId, before, after, ip, at
-```
-
-#### `counters`
-```
-key ("order-2611", "invoice-2526", "batch-2611"), seq    // atomic $inc for numbering
+notifications: recipientType: CUSTOMER|ADMIN, recipient, type, title, body, deepLink, data, readAt?   (TTL 90 days)
+jobs: type, payload, status: PENDING|RUNNING|DONE|FAILED, attempts, maxAttempts, runAt, lockedAt, lastError, idempotencyKey (unique)
+audit_logs (immutable): actor, action, entity, entityId, before (redacted), after (redacted), ip, at
+counters: key ("order-2611","invoice-2627","rinvoice-2627","batch-2611","return-2611"), seq   // atomic $inc
 ```
 
 ---
 
-## 8. Folder Structure
+## 8. Core Business Logic Specs
 
-### 8.1 Repository layout (monorepo, npm workspaces)
+### 8.1 Pricing engine (`modules/pricing`) — single source of truth
+Inputs: variants + qty, coupon, address state, payment method, optional `shareToken`, settings.
+1. Load current **base** variant prices from DB. Ignore all client prices.
+2. If `shareToken` is valid (active share, reseller APPROVED, product `resellingEnabled`): `sellingPrice = base + share.marginPerUnit`, re-validated against current admin margin limits. Invalid/suspended → fall back to base price (no commission) and report a warning.
+3. Line total = `sellingPrice × qty`. Reselling price must not exceed MRP unless `priceMayExceedMrp`.
+4. Coupon: validated (scope, min cart, limits, expiry). **Not applied on reseller orders** unless setting allows.
+5. GST per line from product `gstPercent` (inclusive or exclusive per setting). Same state → CGST+SGST, else IGST. **GST is computed on the full buyer price** `[CONFIRM with CA]`.
+6. Shipping fee (free above threshold, else flat/Bigship rate). 7. COD fee if COD. 8. Round-off → grand total.
+Return a full **breakup object** used by preview, checkout and invoices. The reseller commission is computed **from** this breakup (`margin × qty`) and never changes it. **Unit tests ≥ 25 golden cases.**
+
+### 8.2 Stock reservation
+Atomic `updateOne({_id, stock:{$gte:qty}}, {$inc:{stock:-qty, reservedStock:qty}})` inside a transaction with batch allocation (FIFO). Online unpaid orders hold stock until `expiresAt` (15 min); a job releases expired reservations. Every change writes `stock_movements`.
+
+### 8.3 Order status
+State machine in §6.6. Cancellation allowed only before SHIPPED. Illegal transitions rejected; every change appends `statusHistory`, writes an audit entry and emits an event.
+
+### 8.4 Invoices
+- Financial-year numbering: `INV/2627/00001` (internal) and `RINV/2627/00001` (reselling), from `counters`.
+- **Normal order:** one invoice (INTERNAL) with GSTIN, HSN, tax breakup, **batch per line**.
+- **Reseller order:** two documents created at confirmation: INTERNAL (base price, margin line, batch; CRM only) and RESELLING (to the buyer, final price as one price per item, no margin, no batch by default; optional "Shared by <reseller>" line `[CONFIRM]`).
+- PDF via pdfkit, stored in Cloudinary/private storage, downloadable by the right audience only.
+
+### 8.5 COD rules
+Global toggle AND order value within min/max AND pincode serviceable and not blocked AND customer not `codRestricted` (set manually by admin). Optional COD fee. COD reseller orders earn only after COD is marked collected.
+
+### 8.6 Reviews
+Only customers with a DELIVERED order containing the product may review (verified). Moderation mode AUTO or HOLD. Admin: hide/show with reason, delete, reply, banned-word auto-hold. Aggregates count VISIBLE only and are recalculated on every change.
+
+---
+
+## 9. Reselling Module (Full Spec)
+
+### 9.1 Concept
+A reseller chooses a product, sets **their own margin (₹ per unit)** within admin limits, and receives a personal link. The buyer opens the link, sees **one final price (base + margin)**, orders, and Younora ships directly to the buyer. After delivery plus the hold period, the reseller earns the margin into a wallet. The buyer gets a **Reselling Invoice** at the final price. The internal invoice stays in the CRM.
+
+### 9.2 Onboarding
+Customer applies (`POST /reseller/apply` with business name, payout details) → status `PENDING` → admin approves/rejects → `APPROVED` (gets `resellerCode`). Admin can `SUSPEND`. `[CONFIRM KYC (PAN/bank) and open-vs-invite signup]`
+
+### 9.3 Margin rules
+| Rule | Detail |
+|---|---|
+| Base price | Variant `sellingPrice` set by admin |
+| Margin | Per unit, set per share link; same for all variants of the product (v1) |
+| Limits | Admin min/max per category (default max 40% of base). Server rejects out-of-range values, also at order time |
+| Buyer price | base + margin as ONE price; must not exceed MRP `[CONFIRM]` |
+| Locking | Margin snapshotted on each order line; later edits never change old orders |
+| Coupons | Not applied to reseller orders by default |
+| Shipping/COD fee | Paid by buyer, not part of margin |
+| Commission | `marginPerUnit × qty` on delivered items. Excludes shipping and COD fee |
+
+### 9.4 Earning lifecycle
+```mermaid
+stateDiagram-v2
+  [*] --> PENDING : order DELIVERED
+  PENDING --> AVAILABLE : hold days passed, job releases
+  PENDING --> REVERSED : manual return or RTO
+  AVAILABLE --> REVERSED : manual return after release
+  AVAILABLE --> PAID : payout marked paid
+  REVERSED --> [*]
+  PAID --> [*]
+```
+COD reseller orders: `PENDING` starts only after COD collected. Cancelled/RTO: no earning. Reversal creates a **new negative ledger row**; rows are never edited.
+
+### 9.5 Abuse protection
+Reseller cannot buy through their own link (same user, phone, or address match); share tokens are random and revocable; suspended resellers' links stop taking new orders; payout details encrypted; wallet ledger immutable and idempotent (unique `idempotencyKey` per order item event).
+
+### 9.6 Payouts
+Reseller requests payout (≥ `minPayout`, ≤ available balance). Admin pays **outside the app** (UPI/bank) and marks `PAID` with a reference (permission `payouts.manage`, audited) or rejects with reason. Automatic payouts are deferred. GST/TDS treatment `[CONFIRM with CA before launch]`.
+
+### 9.7 Hidden-details matrix (server-side `resellingView` serializer) `[CONFIRM each row]`
+| Detail | Buyer via link | Reseller | Reselling Invoice | Staff without permission |
+|---|---|---|---|---|
+| Base price | Hidden | Shown (needed to set margin) | Hidden | Shown |
+| Reseller margin | Hidden | Own margin only | Hidden | Hidden |
+| Final price | Shown | Shown | Shown | Shown |
+| Cost price / supplier | Hidden | Hidden | Hidden | Hidden (`inventory.view-cost`) |
+| Batch number | Public batch search only | Hidden | Hidden (default) | Inventory screens only |
+| Buyer phone / full address | Own | Name + city/state only | Buyer's own | Full (needed to ship) |
+| Other resellers' data | n/a | Never | n/a | `resellers.view-sensitive` |
+Hidden-field list stored in `settings.reselling.hiddenFields`. **Automated leak tests** assert forbidden keys never appear in reseller/buyer responses or the reselling PDF.
+
+---
+
+## 10. Manual Returns Register
+There is **no customer-facing return flow**. The storefront shows a Return Policy page and a "Need to return? Contact us" block. Staff record the outcome in CRM → Manual Returns:
+- Select order + items + qty, reason, condition (RESELLABLE / DAMAGED).
+- **Restock** → quantity returns to the ORIGINAL batch (`RETURN_RESTOCK` ledger row). Damaged → `DAMAGE` row and batch `qtyDamaged`.
+- **Refund** → Razorpay refund (idempotent, partial allowed) or manual UPI/bank with a recorded reference, or none. Refund amount proration (coupon/GST) is calculated by the pricing helper.
+- **Reseller order** → automatic wallet `REVERSAL` for the returned items' margin.
+- Order item status → `RETURNED`; everything audited.
+Flow diagram: §6.5.
+
+---
+
+## 11. Batch System & Batch Search
+
+- **A batch = one received lot of one product**, holding quantities per variant (§7.2).
+- **Number format:** `YNR-<YYMM>-<AUD>-<SEQ4>`, e.g. `YNR-2611-WMN-0042`, generated atomically from `counters`. Admin may enter a custom unique value `[CONFIRM]`.
+- **Allocation:** FIFO. If an order line spans two batches, split into two allocation entries. `batchNo` is snapshotted on the order line.
+- **Receiving:** creates/updates a batch, raises variant stock, writes `RECEIVE` ledger rows.
+- **Low stock:** emits `stock.low` / `stock.out` once per threshold crossing.
+
+| Side | Endpoint | Input | Result |
+|---|---|---|---|
+| CRM | `GET /admin/batches/search?q=` | partial batch no., product name, SKU | Batch card: product, variants and remaining qty, received date, supplier, cost (needs `inventory.view-cost`), **orders sold from it**, manual returns/damages, product link |
+| Customer | `GET /store/batch/:batchNo` | exact batch no. (on tag/invoice) | **Public-safe only:** product name, image, color/size in that batch, "Authentic Younora batch", product link. No cost, supplier, stock counts, buyers. Rate-limited, whitelist serializer |
+
+---
+
+## 12. In-App Notification System (v1)
+- Persistent `notifications` collection + REST + **Socket.IO** rooms: `customer:<id>`, `admin:<id>`, `admin:perm:<permission>`. Socket auth uses the same JWT (audience checked).
+- Templates in code (`templates.js`). Customers can toggle offers; transactional always on.
+- Web Push is an **optional later phase** (§24).
+
+| Event | Customer | Admin / Staff |
+|---|---|---|
+| `order.placed` | ✅ | ✅ new order |
+| `payment.failed` | ✅ | ✅ |
+| `order.shipped/out_for_delivery/delivered` | ✅ | — |
+| `order.cancelled` | ✅ | ✅ |
+| `shipment.failed` | — | ✅ retry needed |
+| `stock.low` / `stock.out` | — | ✅ |
+| `review.created` | — | ✅ |
+| `reseller.applied` | — | ✅ |
+| `reseller.approved` | ✅ reseller | — |
+| `reseller.order.placed` / `reseller.earning.available` | ✅ reseller | — |
+| `payout.requested` | — | ✅ |
+| `payout.paid` | ✅ reseller | — |
+| `manual_return.recorded` | — | (audit only) |
+
+Endpoints: `GET /notifications`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all`, `GET /notifications/unread-count`.
+
+---
+
+## 13. Bigship Integration `[VERIFY everything against official docs and sandbox before coding]`
+Capabilities: auth/token cache, serviceability and rates, pickup warehouse setup, create forward shipment, AWB/courier selection, label/manifest, pickup request, tracking (webhook if available + cron sync), cancel, NDR/RTO visibility. **No reverse pickup** (returns are manual).
+
+Adapter interface (`shipping/providers/provider.interface.js`): `checkServiceability`, `getRates`, `createShipment`, `generateLabel`, `schedulePickup`, `track`, `cancel`, `parseWebhook`.
+
+Reliability: shipment creation is a **job** with retry/backoff (5 attempts), stores `lastError`, emits `shipment.failed`; CRM shows **Retry** and **manual AWB entry**. Idempotent (skip if `bigshipOrderId` stored). Status mapping table in `bigship/mapper.js`; unknown statuses keep `rawStatus` without crashing. Webhook secured by secret/IP allowlist; cron fallback every N minutes.
+
+---
+
+## 14. Payments (Razorpay + COD)
+- Amount always computed server-side, sent in paise. Razorpay order `receipt = orderNo`, `notes.orderId`.
+- **Webhook is the source of truth** (`payment.captured`, `payment.failed`, `refund.processed`, `refund.failed`, `order.paid` `[VERIFY]`). Verify `X-Razorpay-Signature` on the **raw body**; store event ids; ignore duplicates.
+- Client `/payments/razorpay/verify` is for instant UI only.
+- Handle tab-closed-after-pay, failed-then-retry, amount mismatch (flag), expired pending orders (release stock).
+- Refunds via Razorpay refund API (partial allowed), idempotent, stored on `payments.refunds[]`.
+- COD: `COD_PENDING` → `COD_COLLECTED` on delivery or manual mark. COD refunds are manual (UPI/bank reference).
+- Admin controls: COD toggle (audited, permission `payments.settings`), limits, fee, blocked pincodes, online ON/OFF.
+
+---
+
+## 15. Folder Structure
+
+### 15.1 Monorepo
 ```
 younora/
 ├─ apps/
-│  ├─ backend/                 # Node + Express API  (BUILT FIRST)
-│  ├─ crm/                     # React + Vite admin  (built second)
-│  └─ storefront/              # Next.js customer site (built third)
+│  ├─ backend/       # Node + Express API   (built first)
+│  ├─ crm/           # React + Vite admin   (built second)
+│  └─ storefront/    # Next.js customer site + reseller panel (built third)
 ├─ packages/
-│  ├─ shared-constants/        # enums: order statuses, roles, permissions, return reasons
-│  ├─ shared-validation/       # Zod schemas reused by backend + frontends
-│  └─ ui-tokens/               # design tokens (colors, fonts) + tailwind preset
+│  └─ shared-constants/   # roles, permissions, statuses, enums
 ├─ docs/
-│  ├─ PLAN.md                  # this file
-│  ├─ api/                     # OpenAPI spec + Postman collection
-│  ├─ decisions/               # ADRs (architecture decision records)
-│  └─ phases/                  # per-phase notes, test reports, sign-offs
-├─ .github/workflows/          # CI (lint, test, build)
-├─ .editorconfig, .gitignore, .prettierrc, eslint.config.js
-├─ package.json                # workspaces
-└─ README.md
+│  ├─ PLAN.md  ·  phases/ (PROGRESS.md, B*-signoff.md, F*-signoff.md)  ·  api/ (OpenAPI, Postman, samples/)  ·  decisions/
+├─ reference/        # old Green Tree code, read-only, git-ignored
+├─ PROJECT_RULES.md  # copy of §2 and §3
+├─ .github/workflows/ · .editorconfig · .prettierrc · eslint.config.js · package.json (workspaces)
 ```
-> *Alternative:* three separate repos. Monorepo is recommended so shared enums/validation never drift. Backend must still run standalone (`npm run dev -w apps/backend`).
+### 15.2 Backend
+```
+apps/backend/src/
+├─ server.js  app.js
+├─ config/    env.js db.js cloudinary.js razorpay.js mail.js
+├─ core/
+│  ├─ errors/  http/  events/ (eventBus, events.js)  jobs/ (runner, registry)  logger.js
+│  ├─ middleware/ authenticate authorize rateLimit validate upload idempotency
+│  ├─ mail/ mailer.js        └─ utils/ money.js slug.js counters.js crypto.js cookies.js dates.js
+├─ modules/
+│  ├─ auth/  users/ (adminUser, customer, address, refreshToken models)  audit/
+│  ├─ notifications/  catalog/ (audience category subcategory attribute sizeChart product variant)
+│  ├─ inventory/ (batch, movements, allocation, batchSearch)  storefront/ (public read)
+│  ├─ wishlist/  cart/  pricing/  coupons/  settings/
+│  ├─ checkout/  orders/ (+invoices)  payments/
+│  ├─ shipping/ (providers/bigship, jobs)  reselling/ (shares, earnings, wallet, payouts, resellingView)
+│  ├─ manualReturns/  reviews/  cms/  enquiry/  reports/
+├─ jobs/    # cron registrations: release reselling holds, expire unpaid orders, tracking sync
+├─ seed/    # admin.seed.js, taxonomy seed, demo data
+└─ tests/   # unit/ integration/ e2e/ helpers/
+```
+Each module: `<name>.model.js · .validation.js · .routes.js · .controller.js · .service.js · .events.js · README.md`.
 
-### 8.2 Backend structure (`apps/backend`)
+### 15.3 CRM and storefront
 ```
-apps/backend/
-├─ src/
-│  ├─ server.js                      # bootstrap: connect DB/Redis, start HTTP + Socket.IO
-│  ├─ app.js                         # express app: middleware, routes, error handler
-│  ├─ config/
-│  │  ├─ env.js                      # zod-validated env
-│  │  ├─ db.js                       # mongoose connection
-│  │  ├─ redis.js
-│  │  ├─ cloudinary.js
-│  │  ├─ razorpay.js
-│  │  └─ webpush.js                  # VAPID setup
-│  ├─ core/
-│  │  ├─ errors/                     # AppError, error codes, error middleware
-│  │  ├─ http/                       # response helpers, pagination, query-builder
-│  │  ├─ middleware/                 # authenticate, authorize, permission, validate, rateLimit, upload, idempotency
-│  │  ├─ events/                     # eventBus.js, event names (events.js)
-│  │  ├─ queue/                      # bullmq setup, queue names, worker registry
-│  │  ├─ logger.js
-│  │  ├─ utils/                      # money.js, slugify, counters, dates, crypto
-│  │  └─ constants/                  # re-export shared-constants
-│  ├─ modules/
-│  │  ├─ auth/                       # admin + customer auth, refresh tokens, OTP/email verify, password reset
-│  │  ├─ users/                      # admin-users (staff/roles), customers, addresses
-│  │  ├─ catalog/
-│  │  │  ├─ audience/ category/ subcategory/ attribute/ sizeChart/
-│  │  │  ├─ product/ variant/
-│  │  │  └─ catalog.routes.js
-│  │  ├─ inventory/                  # batches, stock movements, allocation, bulk import
-│  │  ├─ storefront/                 # public read APIs: listing, filters, search, home
-│  │  ├─ wishlist/
-│  │  ├─ cart/
-│  │  ├─ pricing/                    # pricing engine (GST, discount, shipping, COD fee)
-│  │  ├─ coupons/
-│  │  ├─ checkout/                   # preview + place order orchestration
-│  │  ├─ orders/                     # order lifecycle, invoice, packing slip
-│  │  ├─ payments/                   # razorpay service, webhooks, refunds, COD rules
-│  │  ├─ shipping/
-│  │  │  ├─ shipping.service.js      # provider-agnostic
-│  │  │  ├─ providers/
-│  │  │  │  ├─ provider.interface.js
-│  │  │  │  └─ bigship/              # client, mapper, webhook handler
-│  │  │  └─ jobs/                    # createShipment, syncTracking, retry
-│  │  ├─ returns/                    # return/exchange, QC, refunds, risk scoring
-│  │  ├─ reviews/
-│  │  ├─ notifications/              # templates, rules, in-app, socket, web-push
-│  │  ├─ cms/                        # banners, home sections, static pages
-│  │  ├─ reports/                    # dashboard aggregations, exports
-│  │  ├─ settings/
-│  │  ├─ audit/
-│  │  └─ enquiry/                    # contact form
-│  ├─ jobs/                          # cron registrations (expire unpaid, abandoned cart, tracking sync)
-│  ├─ docs/                          # swagger setup
-│  └─ seed/                          # seed scripts (admin, categories, sample products)
-├─ tests/
-│  ├─ unit/        # pricing, money, allocation, risk score
-│  ├─ integration/ # supertest per module
-│  ├─ e2e/         # full checkout flow
-│  └─ helpers/     # test db, factories, mock razorpay/bigship
-├─ .env.example
-├─ package.json
-└─ README.md
-```
-
-**Inside each module (consistent template):**
-```
-modules/<name>/
-├─ <name>.model.js
-├─ <name>.validation.js     # zod schemas
-├─ <name>.routes.js
-├─ <name>.controller.js
-├─ <name>.service.js
-├─ <name>.events.js         # events emitted / listeners
-├─ <name>.test.js (or in /tests)
-└─ README.md
-```
-
-### 8.3 CRM structure (`apps/crm`)
-```
-apps/crm/
-├─ src/
-│  ├─ main.jsx, App.jsx
-│  ├─ app/            # router, providers (query, auth, theme, socket), guards
-│  ├─ assets/         # logo, icons
-│  ├─ components/
-│  │  ├─ ui/          # Button, Input, Select, Modal, Drawer, Badge, Tabs, Toast, Skeleton, EmptyState
-│  │  ├─ layout/      # Sidebar, Topbar, PageHeader, NotificationBell
-│  │  ├─ data/        # DataTable, FilterBar, Pagination, StatCard, Charts
-│  │  └─ form/        # FormField wrappers, ImageUploader, RichText, VariantMatrixEditor
-│  ├─ features/
-│  │  ├─ auth/ dashboard/ catalog/ inventory/ orders/ shipping/
-│  │  ├─ returns/ reviews/ customers/ coupons/ cms/ settings/ staff/ notifications/ reports/
-│  │  └─ (each: pages/, components/, api.js, hooks.js, schema.js)
-│  ├─ lib/            # axios client (interceptors, refresh), socket, formatters (money, date)
-│  ├─ store/          # auth, ui state
-│  └─ styles/         # tailwind, tokens
-└─ vite.config.js
-```
-
-### 8.4 Storefront structure (`apps/storefront`, Next.js App Router)
-```
-apps/storefront/
-├─ src/
-│  ├─ app/
-│  │  ├─ (shop)/ page.jsx (home), [audience]/page.jsx, c/[category]/[sub]/page.jsx,
-│  │  │          p/[slug]/page.jsx, search/page.jsx, wishlist/page.jsx
-│  │  ├─ (checkout)/ cart/page.jsx, checkout/page.jsx, order-success/[id]/page.jsx
-│  │  ├─ (account)/ account/..., orders/[id]/..., returns/..., notifications/page.jsx
-│  │  ├─ (auth)/ login, register, forgot-password
-│  │  ├─ (content)/ pages/[slug]
-│  │  ├─ sitemap.js, robots.js, manifest.js
-│  ├─ components/ ui/, layout/ (Header, Footer, MegaMenu, MobileNav), product/ (Card, Gallery, ColorSwatch, SizeSelector, SizeChartModal, PincodeCheck), cart/, checkout/, review/, notification/
-│  ├─ features/  (api + hooks per domain)
-│  ├─ lib/ api client, seo helpers, formatters, push (service worker registration)
-│  └─ styles/
-├─ public/ (sw.js service worker, icons, manifest, logo)
+apps/crm/src/        app/ (router, providers, guards)  components/ (ui, layout, data, form)
+                     features/ (auth dashboard catalog inventory orders shipping manualReturns reviews customers
+                                resellers coupons cms settings staff notifications reports)
+                     lib/ (axios, socket, formatters)  store/  styles/
+apps/storefront/src/ app/ (shop, checkout, account, reseller, auth, content, batch, share/[token])
+                     components/ (ui, layout, product, cart, checkout, review, reseller, notification)
+                     features/  lib/  styles/   public/ (manifest, icons)
 ```
 
 ---
 
-## 9. Reusability Strategy
+## 16. API Surface
+Base `/api/v1`. **Pub** = public, **C** = customer, **R** = approved reseller, **A** = admin/staff with permission.
 
-### 9.1 From the old "Green Tree" backend
-| Old asset | Decision | What to change |
-|-----------|----------|----------------|
-| `config/cloudinary.js`, `upload.controller.js`, multer | **Reuse (refactor)** | Move to `config/` + `core/middleware/upload`; add file type/size limits, folder per entity |
-| `middleware/authorization.js` (`authenticate`, `authorize`) | **Reuse concept, rewrite** | Return 401/403 properly (old returns 400); add permission-based check; refresh-token flow; separate admin/customer tokens |
-| `register.*` (auth/OTP/forgot password) | **Reuse logic, split** | Split into `admin_users` and `customers`; hash OTPs; expiry + attempt limits; remove SMS dependency (decide email/OTP provider `[CONFIRM]`) |
-| `payment.controller.js` (Razorpay order + signature verify) | **Reuse core** | Add server-side amount calc, webhook handler, idempotency, payments collection |
-| `order.controller.js` (53 KB) | **Rewrite** | Break into checkout/orders/payments/shipping services; atomic stock; no inline courier call |
-| Cancel + refund via Razorpay | **Reuse idea** | Move into returns/payments services with partial refunds & ledger |
-| `cod.models.js` (COD toggle) | **Reuse** | Move into `settings.payments`, add rules |
-| `coupon.*` | **Extend** | Add percent/flat, limits, expiry, scope |
-| `category/subCategory/mainCategory` | **Reuse structure** | Convert to Audience → Category → Subcategory with ObjectId refs |
-| `address.*`, `wishlist.*`, `cart.*` | **Reuse, adapt** | Cart/wishlist become variant-aware |
-| `slide.*`, `title.*` | **Reuse → CMS banners/sections** | Rename & extend |
-| `enquiry.*` | **Reuse** | Add status + admin reply |
-| `staff.*` | **Reuse → admin_users + permissions** | |
-| `shippingPrice` (by pincode) | **Reuse as fallback** | Primary rates from Bigship; keep manual override table |
-| `tax.*` | **Replace** | HSN/GST per product + settings |
-| `upload.controller` (Excel) | **Reuse idea** | Variant-aware bulk import with validation report |
-| `services/whatsapp.service.js`, Fast2SMS code, birthday/anniversary cron, abandoned-cart WhatsApp | **Drop / replace** | Replaced by in-house notification system |
-| `roadChallan.*` | **Drop** | Nursery-specific |
-| `product.models.js` | **Rewrite** | Product + Variant + Batch |
-| Hard-coded `cors: *`, `console.log` everywhere, client-trusted totals | **Fix** | See §3 and §18 |
+### 16.1 Auth and profile
+| Endpoint | Access |
+|---|---|
+| `POST /auth/admin/login · /logout · /refresh` | Pub / A (cookie `ynr_admin_rt`, path `/api/v1/auth/admin`) |
+| `GET/PATCH /admin/me`, `POST /admin/me/change-password` | A |
+| `POST /auth/customer/register · /login · /logout · /refresh · /forgot-password · /reset-password · /verify-email · /resend-verification` | Pub / C (cookie `ynr_cust_rt`, path `/api/v1/auth/customer`) |
+| `GET/PATCH /me`, `POST /me/change-password` | C |
+| `/addresses` CRUD, `PATCH /addresses/:id/default` | C |
+| `/admin/staff` CRUD + deactivate/reactivate | A (`staff.manage`) |
+| `GET /admin/audit-logs` | A (`audit.read`) |
 
-### 9.2 Cross-project reuse (design for it from day 1)
-- **`packages/shared-constants`**: statuses, roles, permissions, return reasons, notification types → used by backend, CRM, storefront (no string drift).
-- **`packages/shared-validation`**: Zod schemas (address, product form, review, return request) shared for FE+BE validation.
-- **`packages/ui-tokens`**: colors/typography/spacing → Tailwind preset consumed by CRM and storefront.
-- **Generic backend building blocks** reusable in any future project: `core/errors`, `core/http`, `core/queue`, `core/events`, `notifications` module, `shipping/providers` adapter, `audit` module.
-- **Provider adapters:** `shipping/providers/*` and (optionally) `payments/providers/*` behind interfaces → switch courier/gateway without touching order logic.
-- **Feature flags** via `settings` (COD, online payments, reviews moderation mode, guest checkout).
+### 16.2 Catalog, inventory (admin)
+`CRUD /admin/audiences · categories · subcategories · attributes · size-charts`; `CRUD /admin/products` (+ `/variants` upsert, `/duplicate`, `/status`); `POST /admin/products/import · GET /export · GET /import/template`; `POST /admin/uploads`, `DELETE /admin/uploads/:publicId`;
+`CRUD /admin/batches`, `POST /admin/batches/:id/receive`, `GET /admin/batches/search`, `POST /admin/inventory/adjust`, `GET /admin/inventory/movements · /low-stock`, `GET /admin/reports/batch-wise`.
 
----
+### 16.3 Storefront public
+`GET /store/home · /menu · /products · /products/:slug · /products/:slug/similar · /search · /search/suggest · /filters · /pincode/:pin · /pages/:slug · /banners`, **`GET /store/batch/:batchNo`**, **`GET /store/share/:token`**, `POST /store/enquiry`.
 
-## 10. Core Business Logic Specs
+### 16.4 Customer actions
+`/cart` (GET, add, qty, remove, apply/remove coupon, merge-guest), `/wishlist`, `POST /checkout/preview`, `POST /checkout/place`, `POST /payments/razorpay/verify`, `POST /payments/razorpay/retry/:orderId`, `GET /orders`, `GET /orders/:id`, `POST /orders/:id/cancel`, `GET /orders/:id/invoice`, `GET /orders/:id/track`, `POST /reviews`, `GET /me/reviews`, `PATCH/DELETE /reviews/:id`, `POST /reviews/:id/report`, `POST /reviews/:id/helpful`, notifications (§12).
 
-### 10.1 Batch number
-- **Format (proposed):** `YNR-<YYMM>-<AUD>-<SEQ4>` → e.g. `YNR-2611-WMN-0042`
-  `AUD` = MEN/WMN/KID (or category code). Sequence from atomic `counters`.
-- Unique index on `batchNo`. Admin can override with a custom unique value `[CONFIRM]`.
-- **When stock is received** → create batch (or add to existing batch).
-- **At order placement** → allocate units from batches (FIFO) and store `batchNo` in the `OrderItem` snapshot.
-- **If an order line spans two batches** → split into two allocation entries; invoice shows each batch `[CONFIRM display style]`.
-- **Shown in:** CRM product/inventory/order pages, packing slip, **customer invoice (per line)**, CRM dashboard batch report.
-- **Returns** restock to the original batch (traceability to detect bad lots).
+### 16.5 Reseller (R)
+`POST /reseller/apply` (C), `GET /reseller/me`, `PATCH /reseller/me` (payout details), `POST /reseller/shares`, `GET /reseller/shares`, `PATCH /reseller/shares/:id` (margin/active), `GET /reseller/orders`, `GET /reseller/wallet` (balance + ledger), `POST /reseller/payouts`, `GET /reseller/payouts`.
 
-### 10.2 Pricing engine (single source of truth, `modules/pricing`)
-Inputs: variants+qty, coupon, address (state), payment method, settings.
-Steps:
-1. Fetch current variant prices from DB (ignore client prices).
-2. Line total = `sellingPrice × qty`.
-3. Apply coupon (validate scope, min cart, limits, expiry, first-order, payment-method restriction).
-4. GST per line by product `gstPercent` (`pricesInclusiveOfTax` setting decides back-calc vs add-on). Intra-state → CGST+SGST; inter-state → IGST (store GSTIN state) `[CONFIRM with CA]`.
-5. Shipping fee (free above threshold or Bigship/rate-table based).
-6. COD fee if COD.
-7. Round-off, grand total (paise).
-Return a full **breakup object** used by preview, checkout, invoice. **Unit-test this heavily.**
-
-### 10.3 Stock reservation
-- Atomic: `updateOne({_id, stock: {$gte: qty}}, {$inc: {stock: -qty, reservedStock: +qty}})`.
-- COD/paid → confirm (reserved→sold). Pending online payment → reserved with `expiresAt` (e.g., 15 min); job releases expired.
-- Cancel/failed → release. All movements logged in `stock_movements`.
-
-### 10.4 Order status state machine
-```
-PENDING_PAYMENT → CONFIRMED → PACKED → READY_TO_SHIP → SHIPPED → OUT_FOR_DELIVERY → DELIVERED → COMPLETED
-        ↓              ↓           ↓            ↓
-     CANCELLED      CANCELLED   CANCELLED    (cancel via shipment cancel)
-SHIPPED/OUT_FOR_DELIVERY → RTO (return to origin)
-```
-Only allowed transitions permitted (enforced in service); every change appended to `statusHistory` + audit + notification.
-
-### 10.5 COD rules
-Global toggle `payments.codEnabled` AND all of: order value within min/max, pincode not blocked & serviceable, customer not `codRestricted`/HIGH risk, optional COD fee. Optional **COD confirmation** step (in-app/call by staff) before dispatch `[CONFIRM]`.
-
-### 10.6 Return abuse prevention (client's core pain point)
-| Control | Detail |
-|---------|--------|
-| Reason mandatory | Dropdown + comment; photo required for DEFECTIVE/DAMAGED/WRONG_ITEM |
-| Return window | Per category/product (e.g., 7 days from delivery) |
-| Non-returnable | Product flag (e.g., innerwear, sale items) |
-| Size issues | Prefer **exchange** over refund (`exchangeOnly` option) |
-| Packing proof | Staff upload photo/video at packing, linked to order |
-| Unboxing proof | Optional for high-value orders `[CONFIRM]` |
-| QC on receipt | Resellable / damaged / used / wrong item → decides refund (full/partial/none) |
-| Customer risk score | Based on return rate, RTO, COD refusals; auto flag WATCH/HIGH |
-| Actions on risk | Disable COD, require prepaid, limit returns, manual review |
-| Batch analytics | Return rate per batch/product/size → spot genuine quality issues vs abuse |
-| Reverse pickup | Via Bigship, tracked |
-
-**Risk score (starter formula, tunable in settings):**
-`score = 40*returnRate + 30*rtoRate + 20*codRefusalRate + 10*(fastReturnFlag)` → `<30 NONE`, `30–60 WATCH`, `>60 HIGH`. Recompute on delivery/return/RTO events.
-
-### 10.7 Reviews
-- Only customers with a **DELIVERED** order containing that product may review (verified).
-- Moderation mode setting: **auto-publish** or **hold for approval** `[CONFIRM]`.
-- Admin: hide/show (with reason), delete, reply, filter, bulk-hide; banned-word auto-hold; report handling.
-- Aggregate rating recalculated on every visibility change (only VISIBLE counted).
-- Optional **fit feedback** (small/true/large) shown on the product page.
-
-### 10.8 Invoice
-- Sequential invoice number (financial-year based `INV/2526/00001`), GSTIN, HSN, CGST/SGST/IGST, **batch no. per line**, payment method, Younora branding, terms.
-- PDF generated on confirmation/shipping, stored (Cloudinary or private storage), downloadable by customer & admin.
-
----
-
-## 11. In-House Notification System
-
-> **Requirement:** push notifications that are **not** SMS/WhatsApp — fully in-house.
-
-### 11.1 Channels
-| Channel | Tech | Who | Notes |
-|---------|------|-----|-------|
-| **In-app notification center + bell** | MongoDB `notifications` + REST + **Socket.IO** | Customers & admins | Always works, real-time when online, persistent history |
-| **Browser/PWA Web Push** | `web-push` library, **VAPID keys**, service worker, `push_subscriptions` | Customers & admins | Works when tab/browser closed `[VERIFY]` |
-| (Optional later) Email | Nodemailer | Invoices/password reset only | Transactional, not marketing |
-
-> **Platform notes `[VERIFY]`:** Web Push works on Chrome/Edge/Firefox/Android; **iOS requires the site to be installed to Home Screen (PWA, iOS 16.4+)**. If a native app is built later, add FCM/APNs as another channel behind the same notification service.
-
-### 11.2 Architecture
-```
-Module emits event  →  eventBus  →  notifications/listeners
-   → resolve recipients + template + preferences
-   → save Notification (DB)
-   → if recipient online: socket.emit("notification", payload) to room user:<id>
-   → if push subscription exists: enqueue push job → web-push send
-       → on 404/410 response: deactivate subscription
-```
-- Socket rooms: `customer:<id>`, `admin:<id>`, `admin:permission:<perm>`.
-- Socket auth via the same JWT.
-- Deep links: `/orders/:id`, `/returns/:id`, CRM `/orders/:id`, etc.
-
-### 11.3 Event → Notification matrix
-| Event | Customer | Admin/Staff |
-|-------|----------|-------------|
-| `order.placed` | ✅ "Order placed" | ✅ "New order #…" |
-| `payment.captured` / `payment.failed` | ✅ | ✅ (failed) |
-| `order.packed/shipped/out_for_delivery/delivered` | ✅ | — |
-| `order.cancelled` | ✅ | ✅ |
-| `shipment.failed` | — | ✅ "Shipment creation failed — retry" |
-| `shipment.ndr` / `rto` | ✅ (NDR) | ✅ |
-| `return.requested` | ✅ ack | ✅ |
-| `return.approved/rejected/picked/refunded` | ✅ | — |
-| `stock.low` / `stock.out` | — | ✅ |
-| `review.created` / `review.reported` | — | ✅ |
-| `cart.abandoned` (job) | ✅ (respect prefs, rate-limited) | — |
-| `wishlist.back_in_stock` / `price_drop` | ✅ | — |
-| `offer.broadcast` (admin-created) | ✅ (opt-in) | — |
-| `customer.high_risk` | — | ✅ |
-
-### 11.4 Preferences & rules
-- Customers can toggle categories: orders (always on for transactional), offers, returns, reviews.
-- Quiet hours for marketing pushes; frequency cap (e.g., max 2 marketing pushes/day).
-- Admin can send **broadcast push** (segment: all / audience / recent buyers) from CRM.
-- Templates stored in code (`templates.js`) with variables; later editable from CRM.
-
-### 11.5 Backend endpoints (summary)
-`GET /notifications`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all`, `GET /notifications/unread-count`, `POST /push/subscribe`, `DELETE /push/unsubscribe`, `GET /push/public-key`, admin: `POST /admin/notifications/broadcast`.
-
----
-
-## 12. Bigship Integration Design
-
-> **`[VERIFY]` Everything below must be mapped to Bigship's current official API docs & sandbox before coding. Get API credentials, pickup/warehouse setup, and webhook availability first.**
-
-### 12.1 Capabilities needed
-| Capability | Used for |
-|------------|----------|
-| Auth/token | Server-side authentication (cache token, refresh before expiry) |
-| Serviceability & rate check | Pincode delivery check on product page; shipping fee; COD availability |
-| Warehouse/pickup address | One-time setup (store in settings) |
-| Create forward shipment/order | After order confirmed |
-| Courier selection/AWB assignment | Choose courier (cheapest/fastest rule) |
-| Label / manifest | Print from CRM |
-| Pickup request | Schedule pickup |
-| Tracking | Status sync (webhook if available, else polling cron) |
-| Cancel shipment | When order cancelled pre-pickup |
-| Reverse pickup | Return requests |
-| NDR actions | Re-attempt/RTO (if supported) |
-
-### 12.2 Adapter pattern
-```js
-// shipping/providers/provider.interface.js
-{
-  checkServiceability({ pickupPincode, deliveryPincode, weight, cod, value }),
-  getRates({ ... }),
-  createShipment(order),        // returns { providerOrderId, awb, courier, labelUrl }
-  generateLabel(shipment),
-  schedulePickup(shipment),
-  track(awb),
-  cancel(shipment),
-  createReverseShipment(returnRequest),
-  parseWebhook(req)             // normalize to internal status
-}
-```
-`bigship/` implements this; a `shiprocket/` implementation can be added later without touching orders.
-
-### 12.3 Reliability rules
-- Shipment creation is a **background job**: retry with exponential backoff (e.g., 5 attempts), store `lastError`, emit `shipment.failed` to admin, CRM shows **"Retry"** button.
-- Order is never lost because the courier API is down.
-- Idempotent: if `bigshipOrderId` already stored, don't create again.
-- Normalize all provider statuses to internal enum (map table in `bigship/mapper.js`).
-- Tracking: webhook endpoint (secured with secret/IP allowlist) **plus** a cron fallback syncing active shipments every N minutes.
-- Weight/dimensions: sum variant weights + packaging; fall back to category defaults.
-- Store raw provider responses for debugging (redact secrets).
-
-### 12.4 Statuses mapping (internal ← Bigship)
-Create a table in code & tests; unknown statuses → keep `rawStatus`, log warning, don't crash.
-
----
-
-## 13. Payments Design (Razorpay + COD)
-
-### 13.1 Razorpay flow principles
-- Amount **always computed server-side**; client only sends cart + address + method.
-- Create Razorpay order with `amount` (paise), `receipt = orderNo`, `notes { orderId }`.
-- **Webhook = source of truth** (`payment.captured`, `payment.failed`, `refund.processed`, `refund.failed`, `order.paid`) `[VERIFY events]`.
-  - Verify `X-Razorpay-Signature` against **raw body** (use `express.raw` for the webhook route).
-  - Store event IDs → ignore duplicates.
-- Client-side `/payments/verify` (signature of `order_id|payment_id`) used for instant UI only; final state still set by webhook/verification service.
-- Handle: user closes tab after paying (webhook still confirms), payment failure & retry, amount mismatch (flag), expired pending orders (release stock).
-- Refunds: via Razorpay refund API, partial supported; store refund records; reflect on order/payment/return.
-
-### 13.2 COD
-- Toggle & rules from `settings.payments`.
-- COD orders: `payment.status = COD_PENDING`; on delivery (Bigship status or admin mark) → `COD_COLLECTED`.
-- COD returns: refund to bank/UPI/store credit — collect details securely (encrypted fields).
-
-### 13.3 Admin controls
-CRM Payment settings: COD ON/OFF (audited), COD limits/fee/blocked pincodes, online payments ON/OFF, view Razorpay payment & refund status per order, manual "mark COD collected", manual refund (permission-gated).
-
----
-
-## 14. API Surface
-
-Base: `/api/v1`. Public = no auth; **C** = customer auth; **A** = admin/staff auth (+permission).
-
-### 14.1 Auth
-| Method | Endpoint | Access |
-|--------|----------|--------|
-| POST | `/auth/customer/register` · `/login` · `/logout` · `/refresh` | Public/C |
-| POST | `/auth/customer/forgot-password` · `/reset-password` · `/verify-email` | Public |
-| POST | `/auth/admin/login` · `/logout` · `/refresh` | Public/A |
-| GET/PATCH | `/me` (customer) · `/admin/me` | C / A |
-| CRUD | `/admin/staff` (SUPER_ADMIN) | A |
-
-### 14.2 Catalog (admin)
-`CRUD /admin/audiences`, `/admin/categories`, `/admin/subcategories`, `/admin/attributes`, `/admin/size-charts`,
-`CRUD /admin/products` (+ `/admin/products/:id/variants` bulk upsert, `/duplicate`, `/status`),
-`POST /admin/products/import` · `GET /admin/products/export` · `GET /admin/products/import/template`,
-`POST /admin/uploads` (images), `DELETE /admin/uploads/:publicId`.
-
-### 14.3 Inventory
-`CRUD /admin/batches`, `POST /admin/batches/:id/receive`, `POST /admin/inventory/adjust`, `GET /admin/inventory/movements`, `GET /admin/inventory/low-stock`, `GET /admin/reports/batch-wise`.
-
-### 14.4 Storefront (public)
-`GET /store/home`, `/store/menu` (audience→category tree), `/store/products` (filters: audience, category, sub, size, color, price, fabric, rating, discount, inStock, sort, page, limit), `/store/products/:slug`, `/store/products/:slug/similar`, `/store/search?q=`, `/store/search/suggest?q=`, `/store/filters?category=` (available facets), `/store/pincode/:pin` (serviceability + COD), `/store/pages/:slug`, `/store/banners`, `POST /store/enquiry`.
-
-### 14.5 Customer actions (C)
-`/cart` (GET, POST add, PATCH qty, DELETE item, POST apply-coupon, DELETE coupon, POST merge-guest),
-`/wishlist` (GET/POST/DELETE), `/addresses` CRUD,
-`POST /checkout/preview`, `POST /checkout/place`,
-`POST /payments/razorpay/verify`, `POST /payments/razorpay/retry/:orderId`,
-`GET /orders`, `GET /orders/:id`, `POST /orders/:id/cancel`, `GET /orders/:id/invoice`, `GET /orders/:id/track`,
-`POST /returns` (multipart w/ photos), `GET /returns`, `GET /returns/:id`, `POST /returns/:id/cancel`,
-`POST /reviews`, `GET /me/reviews`, `PATCH/DELETE /reviews/:id`, `POST /reviews/:id/report`, `POST /reviews/:id/helpful`,
-notifications & push (see §11.5).
-
-### 14.6 Webhooks (public, signature-verified)
+### 16.6 Webhooks
 `POST /webhooks/razorpay`, `POST /webhooks/bigship` `[VERIFY]`.
 
-### 14.7 Admin operations (A)
-`/admin/orders` (list/filter/search/export), `/:id`, `PATCH /:id/status`, `POST /:id/cancel`, `POST /:id/packing-proof`, `POST /:id/notes`, `POST /:id/shipment/retry`, `GET /:id/label`, `GET /:id/invoice`, `GET /:id/packing-slip`, `POST /admin/orders/manual`, `POST /admin/orders/:id/mark-cod-collected`, `POST /admin/orders/:id/refund`,
-`/admin/shipments` (list, sync, pickup), `/admin/returns` (list, `/:id/approve`, `/reject`, `/schedule-pickup`, `/receive`, `/qc`, `/refund`),
-`/admin/reviews` (list, `/:id/hide`, `/show`, `/reply`, DELETE, bulk),
-`/admin/customers` (list, `/:id`, `/:id/block`, `/:id/cod-restrict`, `/:id/notes`),
-`/admin/coupons` CRUD, `/admin/banners` CRUD, `/admin/home-sections` CRUD, `/admin/pages` CRUD,
-`/admin/settings` (GET/PATCH sections), `/admin/dashboard/*`, `/admin/reports/*`, `/admin/audit-logs`, `POST /admin/notifications/broadcast`.
+### 16.7 Admin operations
+Orders: `/admin/orders` (list/filter/search/export), `/:id`, `PATCH /:id/status`, `POST /:id/cancel`, `/packing-proof`, `/notes`, `/shipment/retry`, `/shipment/manual-awb`, `GET /label · /invoice · /packing-slip`, `POST /admin/orders/manual`, `/mark-cod-collected`, `/refund`.
+Shipments: `/admin/shipments` (list, sync, pickup).
+**Manual returns:** `POST/GET /admin/manual-returns`, `GET/PATCH /:id`, `POST /:id/refund`.
+**Resellers:** `GET /admin/resellers`, `PATCH /:id/approve · /reject · /suspend · /reactivate`, `GET /:id/wallet`, `POST /:id/wallet/adjust`, `GET /admin/payouts`, `POST /admin/payouts/:id/mark-paid · /reject`, `GET /admin/reselling/orders`, `GET /admin/reselling/invoices`, `GET /admin/reselling/invoices/:id/pdf`.
+Reviews: `/admin/reviews` (list, hide, show, reply, delete, bulk). Customers: `/admin/customers` (list, `/:id`, `/block`, `/cod-restrict`, `/notes`). `/admin/coupons`, `/banners`, `/home-sections`, `/pages`, `/enquiries` CRUD. `/admin/settings` (GET/PATCH by section incl. `reselling`, `payments`), `/admin/dashboard/*`, `/admin/reports/*`.
 
 ---
 
-## 15. Phase Plan — BACKEND
+## 17. Backend Phase Plan (B0–B13)
 
-> **Rule:** Complete → Test → Review → Sign-off → then next phase. Do **not** start Phase N+1 until Phase N's gate is passed. Durations assume one full-stack developer + AI assistance; treat as estimates.
-> Each phase includes a **Prompt Seed** you can give Antigravity.
+> **Each phase is a complete specification.** The agent follows §2 for every phase: briefing → permission → code → sign-off → commit + tag → stop. "Tag" below is the tag proposed in the final hand-over.
+> Estimates assume one developer with AI help.
 
-### Phase B0 — Project Foundation & Conventions *(2–3 days)*
-**Goal:** A clean, runnable skeleton with all conventions in place.
-**Tasks**
-1. Create monorepo, `apps/backend`, `packages/*`, ESLint, Prettier, EditorConfig, Husky + lint-staged, commitlint.
-2. Backend scaffold: `server.js`, `app.js`, `config/env.js` (Zod-validated), `config/db.js`, logger (pino), `helmet`, restricted `cors`, `express-rate-limit`, `express-mongo-sanitize`, `hpp`.
-3. `core/errors`, global error handler, response helpers, `validate` middleware, `asyncHandler` (if needed), 404 handler.
-4. Health endpoints: `GET /health`, `/health/ready` (DB/Redis ping).
-5. Jest + Supertest + `mongodb-memory-server` (replica set) configured; first sample test.
-6. `.env.example`, README (setup in 5 minutes), npm scripts (`dev`, `test`, `lint`, `seed`).
-7. MongoDB Atlas dev cluster + Redis (local Docker or Upstash) + Cloudinary account (dev folder).
-8. GitHub repo, branch protection, CI workflow (lint + test).
-**Deliverables:** running server, passing sample test, CI green, docs.
-**Test checklist:** server boots; invalid env fails fast; `/health` OK; unknown route → 404 JSON; thrown error → standard JSON; rate limit works.
-**Gate:** you can clone → install → run → test in under 10 minutes.
-**Prompt seed:** *"Using Engineering Rules (§3) and folder structure §8.1–8.2, scaffold Phase B0 only. Don't create any business modules."*
-
-### Phase B1 — Auth, Users, Roles & Permissions *(4–5 days)*
-**Goal:** Secure authentication for admin and customers.
-**Tasks**
-1. Models: `admin_users`, `customers`, `addresses`.
-2. Admin auth: login, access + refresh token (httpOnly cookie, rotation, revoke on logout), `authenticate`, `authorizeRole`, `requirePermission('products.write')`.
-3. Seed script: first SUPER_ADMIN.
-4. Staff management (SUPER_ADMIN): create/update/deactivate, assign permissions.
-5. Customer auth: register, login, logout, refresh, forgot/reset password, email verification; OTP login optional `[CONFIRM]` (hashed OTP, expiry 5 min, max 5 attempts, resend cooldown).
-6. Profile endpoints, address CRUD (default address, pincode/phone validation).
-7. Brute-force protection (rate limit + lockout), password policy, audit log module (initial).
-8. Proper HTTP codes (401 unauthenticated / 403 forbidden).
-**Deliverables:** Postman collection for auth; module READMEs.
-**Test checklist:** wrong password; expired/invalid token; refresh rotation & reuse detection; customer cannot hit admin routes; staff without permission gets 403; OTP expiry & attempts; deactivated user can't login; address default switching.
-**Gate:** security review of auth flow by you before moving on.
-**Prompt seed:** *"Implement Phase B1 per §7 (admin_users, customers, addresses) and §15 B1. Reuse ideas from old register.controller but split admin/customer and add refresh tokens."*
-
-### Phase B2 — Notification Foundation (event bus + in-app + Socket.IO + Web Push) *(4–5 days)*
-**Goal:** Build notifications **early** so every later phase only emits events.
-**Tasks**
-1. `core/events/eventBus.js` + event names constants.
-2. `notifications` + `push_subscriptions` models; TTL index.
-3. Notification service: create, list (paginated), unread count, mark read/all, delete.
-4. Socket.IO server with JWT auth; rooms per user/role/permission.
-5. Web Push: generate VAPID keys, `GET /push/public-key`, subscribe/unsubscribe, sender with `web-push`, cleanup of expired subscriptions (404/410), queue job with retry.
-6. Template registry (`templates.js`) + preference check + frequency cap.
-7. Test events: a dev-only endpoint/script to emit `test.notification`.
-**Deliverables:** a simple HTML test page (dev only) to subscribe & receive push + socket events.
-**Test checklist:** notification saved; socket delivery to correct room only; push to subscribed browser; invalid subscription removed; read/unread counts; preferences respected; unauthenticated socket rejected.
-**Gate:** receive a real push on desktop Chrome and Android Chrome (iOS PWA optional).
-**Prompt seed:** *"Implement Phase B2 per §11. No business events yet — only the infrastructure and a test emitter."*
-
-### Phase B3 — Catalog: Taxonomy, Attributes, Size Charts, Media *(3–4 days)*
-**Tasks**
-1. Models/CRUD: audience (seed Men/Women/Kids), category, subcategory (ObjectId refs, slugs, sort, active), attributes, size charts.
-2. Cloudinary upload service (folders: `younora/products/<productId>`, validation: type/size, delete by publicId, signed upload optional).
-3. Public read endpoint `/store/menu` (tree).
-4. Slug generation + uniqueness; soft delete; cascading active flags.
-**Test checklist:** unique slugs; cannot delete category with active products; tree endpoint ordering; upload rejects wrong type/size; permission checks.
-**Gate:** category tree and size charts manageable via Postman.
-
-### Phase B4 — Catalog: Products & Variants *(6–8 days)* — *the heart of the system*
-**Tasks**
-1. `products` + `variants` models, indexes.
-2. Create/update product with **color-wise images** and **variant matrix** (color × size) in a **single transactional request**; per-variant MRP/selling/cost price, stock, SKU auto-gen (`YNR-<CAT>-<PROD>-<COLOR>-<SIZE>`), barcode optional.
-3. Validation: selling ≤ MRP, unique SKU, unique {product,color,size}, GST/HSN, at least 1 image per color, weights/dimensions.
-4. Denormalized fields recalculation (priceRange, totalStock) on variant changes.
-5. Status workflow (draft/active/hidden), featured/new/bestseller flags, duplicate product, soft delete.
-6. Admin list: search, filters, sort, pagination, low-stock filter.
-7. Bulk import/export (Excel/CSV): template download, row-level validation report, dry-run mode, partial success handling.
-8. Audit logs for price/stock edits.
-**Test checklist:** variant matrix creation & edit (add/remove size/color); price per size; duplicate SKU rejected; rollback on failure (transaction); import with bad rows returns clear report; denormalized fields correct; non-admin blocked.
-**Gate:** create 10 realistic Younora products through API (men/women/kids, multiple colors/sizes) and review the data shape.
-
-### Phase B5 — Inventory & Batches *(4–5 days)*
-**Tasks**
-1. `batches`, `stock_movements`, `counters` models; batch number generator (atomic).
-2. Receive stock (creates/updates batch, increments variant stock, logs movement).
-3. Manual adjustments (with mandatory reason), damage write-off, quarantine batch.
-4. Allocation service (FIFO) used later by checkout: `allocate(variantId, qty)` → batch splits.
-5. Low-stock detection → emit `stock.low` / `stock.out` events.
-6. Batch reports: stock by batch, sold by batch, return/damage by batch.
-7. Inventory bulk import (receive via Excel).
-**Test checklist:** batch number uniqueness under concurrency (parallel requests); FIFO allocation across batches; stock never negative; movement ledger sums = stock; low-stock event emitted once per crossing.
-**Gate:** concurrency test passes (e.g., 50 parallel reserve attempts on stock=10 → exactly 10 succeed).
-
-### Phase B6 — Storefront Read APIs *(4–5 days)*
-**Tasks**
-1. Product listing with filters/sort/pagination (facets: sizes, colors, price range, fabric, rating, discount); only ACTIVE & in-catalog items; hide out-of-stock option.
-2. Product detail by slug (variants grouped by color, size availability per color, size chart, reviews summary placeholder).
-3. Search (Mongo text index or Atlas Search `[CONFIRM]`) + suggestions; similar products.
-4. Home: banners, sections, new arrivals, best sellers (computed later from orders), featured.
-5. Wishlist module (variant-agnostic product-level) + back-in-stock subscription hook.
-6. Caching headers/ETag; optional Redis cache for menu/home; query performance review (`explain()`), indexes.
-**Test checklist:** each filter combination; pagination edge cases; hidden/draft never exposed; price range filter uses variant prices; search ranking sanity; response time targets (<300ms typical on dev data).
-**Gate:** storefront listing & detail contract frozen (document in OpenAPI) — frontend will rely on it.
-
-### Phase B7 — Cart, Pricing Engine, Coupons, Tax *(5–6 days)*
-**Tasks**
-1. `pricing` module per §10.2 (pure functions + service) — GST intra/inter-state, inclusive/exclusive, rounding.
-2. Coupons CRUD + validation engine (percent/flat, caps, scope, limits, first-order, expiry).
-3. Cart: add/update/remove (variant-aware, max qty per item, stock check), guest cart → merge on login, price-change & stock-change detection with warnings.
-4. Settings module: store/GST/shipping/payment/returns settings (+ audit on change).
-5. Pincode serviceability endpoint (stub using local table until Bigship phase).
-**Test checklist:** pricing golden tests (≥ 25 cases: coupon types, GST modes, states, rounding, COD fee, free shipping threshold); coupon abuse cases; cart quantity > stock; removed/inactive variant in cart; merge logic.
-**Gate:** pricing unit tests reviewed and approved by you (+ CA sign-off on GST logic if possible).
-
-### Phase B8 — Checkout, Orders & Payments (Razorpay + COD) *(8–10 days)* — *highest risk*
-**Tasks**
-1. `orders`, `payments` models; order numbering; invoice numbering counters.
-2. `checkout/preview` and `checkout/place` (idempotency key, transactional): recalc → validate COD rules → reserve & allocate stock/batches → create order snapshot with **batchNo**.
-3. Razorpay: create order, verify signature endpoint, **webhook** (raw body, signature, idempotent event log), payment retry, failure handling, expiry job (release stock, mark expired).
-4. COD flow + COD confirmation state + mark collected.
-5. Order lifecycle service with state machine, status history, cancel rules (pre-ship), admin status updates, manual (phone) order creation.
-6. Invoice PDF generator (with batch per line, GST breakup, branding), packing slip PDF; storage & download endpoints.
-7. Emit events: `order.placed`, `payment.captured/failed`, `order.cancelled`, etc. (notifications from B2 start working).
-8. Customer & admin order list/detail APIs; order export.
-9. Refund service (cancel before ship → full refund) via Razorpay.
-**Test checklist:** tampered client price ignored; double-click/duplicate submit → one order (idempotency); two buyers last item → one wins; webhook replay → no duplicate effect; webhook before client verify and after; payment fail then retry; expiry releases stock; COD disabled → rejected; COD rule violations; invoice contains correct batch & totals; state-machine illegal transitions rejected; refund idempotent.
-**Gate:** full e2e test (browse→cart→checkout→pay (Razorpay test mode)→order→invoice) green; manual test with real Razorpay test cards/UPI.
-
-### Phase B9 — Shipping with Bigship *(6–8 days)*
-**Tasks**
-1. Verify Bigship docs & sandbox; write `bigship` client (auth/token cache, retry, timeouts, error normalization).
-2. Provider interface + mapper + status normalization table.
-3. Serviceability/rate API wired to `/store/pincode/:pin` and checkout shipping fee/COD availability.
-4. Shipment creation **job** (queue, retries, backoff, idempotency), weight/dimension calculation.
-5. Label/manifest download, pickup scheduling, cancel shipment.
-6. Tracking: webhook endpoint (if supported) + cron sync fallback; update order status & emit notifications.
-7. Admin endpoints: retry, force-sync, shipments list; failure alerts (`shipment.failed`).
-8. COD collection reconciliation (delivered → COD_COLLECTED / remittance notes).
-**Test checklist:** sandbox end-to-end; API down → order still created, job retries, admin alerted; duplicate job → single shipment; unknown status handled; cancel after AWB; label retrieval; webhook auth.
-**Gate:** 3 real sandbox shipments (prepaid, COD, cancelled) behave correctly in CRM data.
-
-### Phase B10 — Returns, Exchanges, Refunds & Risk Scoring *(7–9 days)*
-**Tasks**
-1. `return_requests` model + state machine; eligibility rules (window, non-returnable, delivered-only, qty limits, one active request per item).
-2. Customer create (photos upload, reasons), cancel; admin approve/reject (reason required), reverse pickup via Bigship, receive, **QC** (result + photos).
-3. Refund: Razorpay refund (full/partial), COD refund methods (encrypted bank/UPI), store-credit option `[CONFIRM]`; exchange flow (new variant order linked to original, stock check).
-4. Restock resellable items to original batch; damaged → write-off ledger.
-5. Customer risk scoring service (§10.6), auto-flag, COD restriction automation; settings to tune.
-6. Return analytics endpoints (by reason, batch, product, size, customer).
-7. Events + notifications for each stage.
-**Test checklist:** each state transition & illegal transitions; ineligible requests rejected (window expired, non-returnable, already returned); partial refund math incl. GST/coupon proration; refund idempotency; restock to correct batch; risk score updates; exchange with out-of-stock size.
-**Gate:** walk-through of 5 return scenarios (valid, fake reason w/ QC fail, partial refund, exchange, COD refund) with correct stock/ledger/refund results.
-
-### Phase B11 — Reviews & Moderation *(3–4 days)*
-**Tasks**
-1. Review model; verified-purchase check; one review per product per order; photo upload; fit feedback.
-2. Public listing (visible only, sort by recent/helpful/rating, rating summary), helpful vote, report.
-3. Admin: list/filter, hide/show (+reason), delete, reply, bulk actions, banned-word auto-hold, moderation mode setting.
-4. Aggregate recalculation on product (avg, count, breakdown) on every change.
-5. Events: `review.created` → admin notification.
-**Test checklist:** unverified user blocked; duplicate blocked; hidden review excluded from public and aggregates; aggregate math; banned words; permissions.
-**Gate:** product detail API now returns real rating summary and review list.
-
-### Phase B12 — CMS, Enquiry, Dashboard, Reports, Audit *(5–6 days)*
-**Tasks**
-1. Banners, home sections, static pages, announcement bar APIs (admin CRUD + public read).
-2. Enquiry/contact with admin status/reply.
-3. Dashboard aggregations (KPIs, time series, top lists, split, low stock, pending counts) with date ranges; consider caching.
-4. Reports: sales, GST (invoice-wise), batch-wise sales/stock, returns, customers; **export to Excel/CSV**.
-5. Audit log viewer API; scheduled jobs: abandoned cart notifications, expiry cleanup, stats recompute (best sellers), tracking sync.
-6. Broadcast push endpoint (admin) with segment & rate limits.
-**Test checklist:** aggregation correctness vs seeded data; date-range boundaries & timezone (IST); export content; jobs idempotent.
-**Gate:** dashboard numbers reconcile with raw orders on a seeded dataset.
-
-### Phase B13 — Hardening, Documentation & Backend Release *(5–7 days)*
-**Tasks**
-1. Security pass (§18), dependency audit, secrets review, CORS whitelist, rate limits per route group, payload size limits.
-2. Performance: indexes review, slow query log, N+1 elimination, pagination everywhere, compression, connection pooling.
-3. Observability: structured logs, error tracking (Sentry `[CONFIRM]`), uptime checks, request IDs.
-4. Full OpenAPI spec + Postman collection (all endpoints, examples), env docs, runbooks (webhook failures, stuck shipments, stock mismatch repair script).
-5. Backup/restore drill (Atlas backups), seed scripts for demo data, data migration plan if importing old products.
-6. Load test (k6/Artillery): browse & checkout scenarios.
-7. Deploy backend to staging; connect Razorpay test & Bigship sandbox; UAT with client via Postman/Swagger if desired.
-**Gate (BACKEND RELEASE CANDIDATE):** all tests green in CI, load test acceptable, docs complete, staging stable for 3 days → **only now start frontend.**
-
-**Backend timeline (estimate):** ≈ 12–15 weeks solo (B0–B13). Parallelism possible only if more developers join.
+### Phase B0 — Foundation ✅ *(done, tag v0.0.0)*
+Monorepo, lint/format, Express 5 app, env validation, pino, helmet/CORS/rate-limit, error + response format, health endpoints, Jest setup, CI.
 
 ---
 
-## 16. Phase Plan — FRONTEND
+### Phase B1 — Auth, Users, Roles & Permissions *(4–5 d, tag v0.1.0)*
+**Status:** Slice 1 (models + constants) done. **Resume at Slice 2.** Locked decisions below must not change without the owner's approval.
 
-> Frontend starts after Backend RC. CRM first (the owner starts managing products while the storefront is built), then the storefront. API contract = OpenAPI from B13.
+**Goal:** Secure authentication for admins (CRM) and customers (storefront), staff permissions, addresses, and the audit trail.
 
-### Phase F0 — Design System & Project Setup *(4–5 days)*
-**Tasks**
-1. Create `apps/crm` (Vite) and `apps/storefront` (Next.js); Tailwind configured with `packages/ui-tokens` (colors §4.2, fonts §4.4).
-2. Base components: Button, Input, Select, Checkbox, Radio, Switch, Modal, Drawer, Tabs, Badge, Toast, Tooltip, Skeleton, EmptyState, Pagination, Breadcrumb.
-3. Logo assets (SVG, favicons), fonts, icon set (Lucide).
-4. Storybook or a `/design` showcase page for review.
-5. API client (axios) with interceptors (auth, refresh, error normalization), TanStack Query setup, form patterns (RHF + Zod from shared package).
-**Gate:** you approve the visual language (palette, typography, components) before building pages.
+**Locked decisions**
+1. Only `packages/shared-constants` is shared. Zod schemas live in each module's `<name>.validation.js`.
+2. Tokens: access JWT 15 min (`aud` = `younora:admin` or `younora:customer`); refresh token random, stored **hashed** in `refresh_tokens`, rotated on every use, family revoked on reuse (10-second grace window for parallel calls), max 10 sessions/user.
+3. Cookies: `ynr_admin_rt` (path `/api/v1/auth/admin`) and `ynr_cust_rt` (path `/api/v1/auth/customer`), httpOnly, SameSite=Lax, Secure outside local.
+4. `authenticate` loads the user from the **database**; role and permissions come from the DB, not the token. `SUPER_ADMIN` bypasses permission checks. Inactive/blocked users get 401/403 even with a valid token. Access tokens issued before `passwordChangedAt` are rejected.
+5. Lockout: 5 failed logins → locked 15 minutes (admins and customers), plus IP rate limit. Generic error "Invalid email or password". Emails lowercased.
+6. `forgot-password` always returns the same 200. Reset/verify tokens are hashed, expiring, single use. Password change/reset revokes other sessions.
+7. Customer login is **email + password** with email verification (no SMS). Mailer via Nodemailer (`jsonTransport` in tests); never log tokens.
+8. A Super Admin cannot deactivate themselves or the last active Super Admin.
+9. Addresses: max 10, hard delete (orders keep snapshots), promote another default when the default is deleted, pincode 6 digits, phone 10-digit Indian.
+10. Seed script is idempotent and refuses the placeholder password in production.
+11. Audit log is immutable (no update/delete routes) and redacts password hashes, tokens and payout details.
+12. `resellerStatus` is the single source of truth; `isReseller` is a virtual.
 
-### Phase F1 — CRM Shell, Auth & Permissions *(3–4 days)*
-Login, protected routes, role/permission guards (hide menu items & routes), layout (sidebar, topbar, breadcrumbs), profile, staff management UI, global error/empty/loading states, 401 handling.
-**Test:** login/logout/refresh, route guard by permission, session expiry UX.
+**Slices**
+1. Models and constants ✅ (adminUser, customer, address, refreshToken, permissions).
+2. Admin auth: token utils, cookies helper, `authenticate`, `authorizeRole`, `requirePermission`, admin login/logout/refresh/me, seed script.
+3. Staff CRUD (`/admin/staff`, create, list, get, update, deactivate, reactivate).
+4. Customer auth: register, login, logout, refresh, forgot/reset, verify-email, resend-verification, mailer.
+5. Profiles and addresses: `/me`, `/admin/me`, change-password, address CRUD with atomic default switching.
+6. Audit module (`logAction`, `GET /admin/audit-logs`) wired into staff changes, permission changes, password changes, admin login; final hardening and Postman collection.
 
-### Phase F2 — CRM Catalog *(8–10 days)*
-Category/subcategory/attribute/size-chart screens; **Product form** (multi-step: basics → media per color → variant matrix editor → pricing/stock → SEO/policy → review); product list (filters, bulk actions); import/export UI with error report; image upload with reorder/preview.
-**Test:** create/edit product with matrix, validation messages, large image handling, bulk import error display.
-
-### Phase F3 — CRM Inventory & Batches *(4–5 days)*
-Batch list/detail, receive-stock form (auto batch number), adjust stock, movement ledger, low-stock page, batch reports.
-
-### Phase F4 — CRM Orders, Shipping & Payments *(7–9 days)*
-Orders table (filters/search/export), order detail (timeline, items with **batch no.**, payment, shipment, notes, packing proof upload), status actions with confirmation, invoice/packing-slip/label buttons, retry shipment, manual order creation, COD toggle & rules UI, refund UI.
-
-### Phase F5 — CRM Returns, Reviews, Customers *(6–8 days)*
-Returns desk (queue, detail with photos, approve/reject, pickup, QC form, refund), reviews moderation (hide/show/reply/bulk), customers (risk badge, block, COD restrict, history).
-
-### Phase F6 — CRM Marketing, CMS, Settings, Dashboard, Notifications *(7–9 days)*
-Coupons, banners, home sections, pages, settings pages, dashboard charts (Recharts), reports + export, audit log view, **notification bell + real-time toasts + push opt-in + broadcast composer**.
-**CRM Release gate:** client UAT on staging — owner can run the full catalog→order→return cycle.
-
-### Phase F7 — Storefront Foundation, Home, Listing, Product Page *(10–12 days)*
-Header/mega-menu/mobile nav/footer, home page sections, category listing with filters/sort (URL-synced, SSR/ISR), search with suggestions, **product page** (gallery by color, swatches, size selector w/ availability, size chart modal, pincode check, reviews summary, similar products, share), SEO (metadata, JSON-LD Product schema, sitemap, robots, canonical), image optimization, skeletons.
-**Test:** Lighthouse mobile ≥ 90 perf/SEO on key pages; filter URL sharing; accessibility basics.
-
-### Phase F8 — Cart, Checkout & Payments *(7–9 days)*
-Mini-cart/cart page, coupon apply, price breakup, address select/add, payment step (Razorpay checkout; COD shown only when allowed with reason when not), order success/failure pages, retry payment, guest→login merge.
-**Test:** all payment paths on Razorpay test mode, double-submit protection, network-failure recovery, COD disabled behavior.
-
-### Phase F9 — Account, Orders, Returns, Reviews, Wishlist *(7–9 days)*
-Auth pages, profile/addresses, orders list/detail with tracking timeline & invoice download, cancel, **return/exchange flow with photo upload & policy display**, review form (verified), wishlist page, enquiry/contact form, policy pages.
-
-### Phase F10 — PWA, Push & In-App Notifications *(4–5 days)*
-Service worker, manifest, install prompt, push permission UX (ask at the right moment, not on first load), notification center page + bell, preference toggles, deep-link handling, offline fallback page.
-**Test:** push on Android Chrome & desktop; iOS PWA flow; unsubscribe; expired subscription handling.
-
-### Phase F11 — QA, Performance, Accessibility, SEO & Launch *(7–10 days)*
-Cross-browser/device QA, WCAG AA review, analytics (GA4/Meta pixel `[CONFIRM]`), error tracking, final content/legal pages (Terms, Privacy, Return policy, Shipping policy), domain/SSL, production env, Razorpay live keys, Bigship production, backup & monitoring, soft launch with real test orders, go-live checklist, handover docs & training for the owner.
-
-**Frontend timeline (estimate):** ≈ 14–18 weeks solo (F0–F11).
+**Tests:** wrong password, lockout and unlock, expired/invalid token, refresh rotation, reuse detection, grace window, customer token rejected on admin routes (and vice versa), staff without permission gets 403, permission change effective on next request, deactivated/blocked user rejected, reset-token expiry and single use, password change revokes sessions, cookie flags, last-Super-Admin protection, address default switching and ownership isolation, audit redaction.
+**Gate:** security review of the whole auth diff by the owner.
 
 ---
 
-## 17. Testing Strategy
+### Phase B2 — In-App Notifications *(2–3 d, v0.2.0)*
+**Goal:** Event bus and in-app notifications so every later phase only emits events.
+**Build:** `core/events/eventBus.js` + `events.js`; `notifications` model with TTL; service (create, list paginated, unread count, mark read/all, delete); Socket.IO server with JWT auth and rooms (`customer:<id>`, `admin:<id>`, `admin:perm:<perm>`); template registry; preference check; dev-only test emitter.
+**Endpoints:** §12.
+**Tests:** notification saved; delivery only to the right room; unauthenticated socket rejected; read/unread counts; preferences respected; admin permission room routing.
+**Gate:** test emitter shows a live toast in a simple dev HTML page.
+**Out of scope:** Web Push, email notifications, business events.
 
+---
+
+### Phase B3 — Catalog Taxonomy, Attributes, Size Charts, Media *(3 d, v0.3.0)*
+**Build:** audience (seed Men/Women/Kids), category, subcategory with ObjectId refs, slug generation, sort, active flags, soft delete; attributes; size charts; Cloudinary upload service (folder per entity, type/size limits, delete by publicId); `/store/menu` tree (public).
+**Reuse:** `reference/` cloudinary config and upload ideas.
+**Tests:** unique slugs, cannot delete category with active products, tree ordering, upload rejects wrong type/size, permission checks (`categories.manage`).
+**Gate:** manage tree and size charts end-to-end in Postman.
+
+---
+
+### Phase B4 — Products & Variants *(6–8 d, v0.4.0)* — *heart of the catalog*
+**Build:** `products` + `variants`; create/update product with **color-wise images** and a **variant matrix** in one transaction; per-variant MRP/base price/cost/stock/SKU (auto `YNR-<CAT>-<PROD>-<COLOR>-<SIZE>`), barcode optional; validations (price ≤ MRP, unique SKU, unique product+color+size, ≥1 image per color, HSN/GST); denormalised `priceRange`/`totalStock`; status workflow; flags incl. `resellingEnabled`; duplicate; soft delete; admin list with search/filter/sort/pagination/low-stock; **Excel/CSV import/export** with template, dry-run and row-error report; audit on price/stock edits. Cost price visible only with `inventory.view-cost`.
+**Tests:** matrix create/edit (add/remove size/color), per-size price, duplicate SKU rejected, rollback on failure, import bad rows report, denormalised fields correct, permissions.
+**Gate:** create 10 realistic Younora products via API (men/women/kids, multi colour/size) and review the data shape.
+
+---
+
+### Phase B5 — Inventory & Batches *(4–5 d, v0.5.0)*
+**Build:** `batches`, `stock_movements`, `counters`; batch number generator (atomic); receive stock; manual adjust (mandatory reason), damage write-off, quarantine; **FIFO allocation service** `allocate(variantId, qty)` returning batch splits; low-stock events; batch reports (stock/sold/damaged by batch); stock-receive Excel import; **CRM batch search** (§11).
+**Tests:** batch number uniqueness under parallel requests; FIFO across batches; stock never negative; ledger sums equal stock; low-stock event emitted once per crossing; search by partial batch/product/SKU; cost hidden without permission.
+**Gate:** 50 parallel reserve attempts on stock 10 → exactly 10 succeed.
+
+---
+
+### Phase B6 — Storefront Read APIs *(4–5 d, v0.6.0)*
+**Build:** listing with filters (size, color, price, fabric, rating, discount, in-stock), sort, pagination, facets; product detail by slug (variants grouped by colour, size availability, size chart, rating placeholder); search + suggestions; similar products; home/banners/sections read; wishlist; **public batch lookup** (§11); ETag/cache headers.
+**Tests:** every filter combo; pagination edges; draft/hidden never exposed; price filter uses variant prices; batch lookup returns only whitelisted fields and is rate-limited; typical response < 300 ms on dev data.
+**Gate:** listing and detail contracts frozen in OpenAPI (frontend depends on them).
+
+---
+
+### Phase B7 — Cart, Pricing Engine, Coupons, Settings *(5–6 d, v0.7.0)*
+**Build:** pricing module per §8.1 (pure functions + service) including **reseller margin pricing and validation**; coupons CRUD + validation engine; cart (variant-aware, max qty, stock checks, guest merge, price/stock change warnings, `shareToken` carried on cart); settings module (store, GST, shipping, payments, reselling limits, reviews mode) with audit; pincode serviceability stub (local table until B9).
+**Tests:** **≥ 25 golden pricing cases** (coupon types, GST modes, intra/inter-state, rounding, COD fee, free shipping, **reseller margin within/outside limits, MRP cap, coupon blocked on reseller order**); coupon abuse; qty > stock; removed variant; guest merge.
+**Gate:** pricing tests reviewed and approved by the owner (+ CA review of GST logic).
+
+---
+
+### Phase B8 — Checkout, Orders, Payments, Invoices *(8–10 d, v0.8.0)* — *highest risk*
+**Build:** `orders`, `payments`, `invoices`; numbering; `checkout/preview` and `checkout/place` (idempotency key, transactional): recalc → COD rules → reserve + allocate batches → order snapshot incl. `batchNo`, base price, margin; Razorpay create/verify/**webhook** (raw body, signature, event log), retry, expiry job; COD flow + mark collected; order lifecycle service (§6.6), cancel rules, admin status updates, **manual (phone) order**, packing proof; **INTERNAL invoice PDF** (batch per line, GST breakup) and **RESELLING invoice PDF** (hidden fields stripped), packing slip; refund service (cancel before ship); events to notifications; customer/admin order APIs and export. Reseller attribution stored on the order (earnings logic comes in B10).
+**Tests:** tampered price/margin ignored; duplicate submit → one order; two buyers last item → one wins; webhook replay idempotent; webhook before/after client verify; pay fail then retry; expiry releases stock; COD disabled/rules; invoice batch and totals correct; reselling invoice contains no margin/batch; illegal transitions rejected; refund idempotent.
+**Gate:** full e2e (browse → cart → checkout → Razorpay test pay → order → invoice) green, plus manual test with Razorpay test cards/UPI.
+
+---
+
+### Phase B9 — Shipping with Bigship *(6–8 d, v0.9.0)*
+**Build:** read Bigship docs and sandbox first; save samples to `docs/api/samples/`; client (token cache, retry, timeout, error normalisation); provider interface + mapper + status table; serviceability/rates wired to `/store/pincode/:pin` and checkout; **shipment job** (queue, retry, backoff, idempotency, weight/dimensions); label/manifest, pickup, cancel; tracking webhook + cron fallback updating order status and emitting events; admin retry, force-sync, manual AWB, shipments list; COD reconciliation (delivered → COD collected).
+**Tests:** sandbox e2e; API down → order still created, job retries, admin alerted; duplicate job → one shipment; unknown status handled; cancel after AWB; webhook auth.
+**Gate:** 3 real sandbox shipments (prepaid, COD, cancelled) reflected correctly in CRM data.
+
+---
+
+### Phase B10 — Reselling *(6–8 d, v0.10.0)*
+**Build (per §9):** reseller apply/approve/reject/suspend; share links (margin validation, token, click count); public share endpoint; order attribution checks (self-purchase block); **earning creation on DELIVERED** (and on COD collected) as PENDING ledger rows; **hold-release job**; reversal on RTO/cancel; wallet ledger + balance computation; payout request/mark-paid/reject; admin wallet adjust (audited); reselling orders list for reseller and admin; admin reselling-invoices list + PDF download; `resellingView` serializer + settings-driven hidden fields; encrypted payout details; notifications (§12); reseller reports.
+**Tests:** margin limits enforced at share time and order time; earning created once (idempotent) on delivery; hold release; COD earning only after collection; reversal rows; balance equals ledger sum; payout cannot exceed available; self-purchase blocked; suspended link rejected; **leak tests** (no base price/margin/cost/batch where hidden; no other resellers' data); payout details encrypted at rest.
+**Gate:** full scenario passes: share → buyer orders → delivered → pending → released → payout paid; and the same with a return reversal.
+
+---
+
+### Phase B11 — Manual Returns & Reviews *(4–5 d, v0.11.0)*
+**Build:** manual returns register (§10): create/list/get/update, restock to original batch, damage write-off, Razorpay refund (idempotent, partial) or manual refund record, reseller wallet reversal, item status RETURNED, audit; reviews (verified purchase, one per product per order, photos, fit feedback, public list/helpful/report, admin list/filter/hide/show/reply/delete/bulk, banned-word hold, moderation mode, aggregate recalculation, `review.created` event).
+**Tests:** return updates stock, batch, ledger, refund and wallet consistently; refund idempotency; partial refund proration; unverified/duplicate review blocked; hidden review excluded from public + aggregates; aggregate math; permissions.
+**Gate:** 4 scenarios walked through (resellable restock, damaged, partial refund, reseller-order return) with correct stock/ledger/refund/wallet results; product API returns real rating summary.
+
+---
+
+### Phase B12 — CMS, Enquiry, Dashboard, Reports *(4–5 d, v0.12.0)*
+**Build:** banners, home sections, static pages, announcement bar (admin CRUD + public read); enquiries with status/reply; dashboard KPIs (sales 1/7/30d, orders by status, AOV, top products/categories, low stock, pending reviews, COD vs prepaid, reselling sales and payouts due); reports (sales, GST invoice-wise, batch-wise, manual returns, reselling, customers) with Excel/CSV export; audit viewer filters; scheduled jobs registry.
+**Tests:** aggregations vs seeded data; date boundaries in IST; export content; jobs idempotent.
+**Gate:** dashboard reconciles with raw orders on a seeded dataset.
+
+---
+
+### Phase B13 — Hardening, Docs & Backend Release *(4–6 d, v1.0.0-rc.1)*
+**Build:** security pass (§20), dependency audit, CORS whitelist, per-route rate limits, payload limits; indexes review, slow queries, pagination everywhere, compression; request ids, error tracking `[CONFIRM Sentry]`; full OpenAPI + Postman, env docs, runbooks (webhook failures, stuck shipments, stock mismatch repair); backup/restore drill; demo seed; load test (k6/Artillery); deploy to staging with Razorpay test + Bigship sandbox.
+**Gate (BACKEND RELEASE CANDIDATE):** CI green, load test acceptable, docs complete, staging stable 3 days → frontend may start. **Backend total ≈ 10–13 weeks.**
+
+---
+
+## 18. Frontend Phase Plan (F0–F11)
+
+> Starts only after the Backend RC (B13). Same protocol as §2: briefing → permission → code → sign-off → commit + tag → stop. Frontend consumes the OpenAPI contract and never recalculates prices, margins or totals itself.
+> Common rules: Tailwind with tokens from §4; TanStack Query for server state; React Hook Form + Zod for forms; one axios client with auth refresh and normalised errors; every list has loading, empty and error states; money formatted from paise; responsive; WCAG AA basics. Tags: `fe-v0.<N>.0`.
+
+### Phase F0 — Design System & Setup *(3–4 d, fe-v0.0.0)*
+Create `apps/crm` (Vite) and `apps/storefront` (Next.js). Tailwind config with Younora tokens, fonts, logo SVG/favicons, Lucide icons. Base components: Button, Input, Select, Checkbox, Radio, Switch, Modal, Drawer, Tabs, Badge, Toast, Tooltip, Skeleton, EmptyState, Pagination, Breadcrumb, DataTable shell. API client (interceptors, refresh with cookies, error normalisation). `/design` showcase page.
+**Tests:** component render tests (Vitest + Testing Library). **Gate:** owner approves the visual language.
+
+### Phase F1 — CRM Shell, Auth & Permissions *(3 d, fe-v0.1.0)*
+Login, session handling, protected routes, permission guards (menu items and routes hidden by permission), layout (sidebar, topbar, breadcrumbs), profile + change password, staff management UI (create, permissions, deactivate), global error/empty states, 401 handling.
+**Tests:** login/logout/refresh, route guard by permission, session-expiry UX.
+
+### Phase F2 — CRM Catalog *(8–10 d, fe-v0.2.0)*
+Audience/category/subcategory/attribute/size-chart screens; **Product form** (steps: basics → media per colour → **variant matrix editor** → pricing/stock → SEO/flags incl. reselling toggle → review); product list (filters, bulk status/price); import/export UI with error report; image upload with reorder/preview; cost price shown only with permission.
+**Tests:** create/edit with matrix, validation messages, large-image handling, bulk import error display.
+
+### Phase F3 — CRM Inventory & Batches *(4 d, fe-v0.3.0)*
+Batch list/detail, **receive-stock form** (auto batch number, per-variant quantities), adjust stock, movement ledger, low-stock page, batch reports, **global batch search box** in the topbar (batch card with orders sold, damages, product link).
+
+### Phase F4 — CRM Orders, Shipping & Payments *(7–8 d, fe-v0.4.0)*
+Orders table (filters, search, export); order detail (timeline, items with **batch no.**, payment, shipment, notes, packing-proof upload, reselling info for reseller orders); status actions with confirmation; internal invoice / packing slip / label buttons; retry shipment + manual AWB; manual (phone) order creation; COD toggle and rules UI; refund UI.
+
+### Phase F5 — CRM Manual Returns, Reviews, Customers *(4–5 d, fe-v0.5.0)*
+**Manual Returns Register**: create from an order (items, qty, reason, condition, restock toggle, refund mode/amount/reference), list/detail, refund trigger. Reviews moderation (hide/show/reply/bulk, filters). Customers (list, order history, block/unblock, COD restrict, notes).
+
+### Phase F6 — CRM Reselling *(5–6 d, fe-v0.6.0)*
+Resellers list with status filters, approve/reject/suspend, reseller detail (shares, orders, wallet ledger), wallet adjust, **payout queue** (mark paid with reference / reject), reselling orders, **Reselling Invoices section** (filter, preview, download PDF), reselling settings (margin limits per category, hold days, min payout, MRP cap, hidden-field toggles). Sensitive columns obey `resellers.view-sensitive`.
+
+### Phase F7 — CRM Marketing, Settings, Dashboard, Notifications *(6–8 d, fe-v0.7.0)*
+Coupons, banners, home sections, static pages, enquiries inbox, settings pages (store, GST, shipping, payments, reviews, invoice), dashboard charts (Recharts) incl. reselling widgets, reports with Excel export, audit log viewer, **notification bell + live toasts** (Socket.IO).
+**CRM Release gate:** owner UAT on staging — full cycle catalog → batch → order → ship → manual return → reseller payout.
+
+### Phase F8 — Storefront Core *(9–11 d, fe-v0.8.0)*
+Header, mega menu, mobile nav, footer; home sections; category listing with filters/sort (URL-synced, SSR/ISR); search with suggestions; **product page** (gallery by colour, swatches, size selector with availability, size chart modal, pincode check, reviews summary, similar products, share, **"Share & earn" button for approved resellers**); **batch search page/box**; SEO (metadata, JSON-LD, sitemap, robots); image optimisation; skeletons.
+**Tests:** Lighthouse mobile ≥ 90 (performance/SEO) on key pages; filter URL sharing; a11y basics.
+
+### Phase F9 — Cart, Checkout & Payments *(7–8 d, fe-v0.9.0)*
+Mini-cart/cart, coupon apply, price breakup (buyer sees one final price), address select/add, payment step (Razorpay; COD shown only when allowed with reason when not), success/failure pages, retry payment, guest→login merge, **share-link landing `/s/[token]`** that carries `shareToken` through cart and checkout.
+**Tests:** every payment path in Razorpay test mode, double-submit protection, network-failure recovery, COD-disabled behaviour, share-link order.
+
+### Phase F10 — Account, Reseller Panel, Reviews *(8–10 d, fe-v0.10.0)*
+Auth pages (register, login, verify email, forgot/reset), profile/addresses, orders list/detail with tracking and invoice download, cancel, review form (verified), wishlist, contact form, **Return Policy page + "Contact us to return" block**, policy pages, notification center and bell. **Reseller panel:** apply form, share link creator (margin input with limits shown, live buyer-price preview from API), my links (copy/share/deactivate), my orders (buyer name + city only), earnings dashboard (pending / available / paid), wallet ledger, payout request and history.
+
+### Phase F11 — QA, Performance, Accessibility, SEO & Launch *(6–8 d, v1.0.0)*
+Cross-browser/device QA, WCAG AA review, analytics `[CONFIRM GA4/Meta pixel]`, error tracking, legal pages (Terms, Privacy, Return, Shipping), domain/SSL, production env, Razorpay live keys, Bigship production, backups and monitoring, soft launch with real test orders, go-live checklist, owner handover and training.
+**Frontend total ≈ 11–14 weeks.** Optional later phase: PWA + Web Push (§24).
+
+---
+
+## 19. Testing Strategy
 | Level | Tool | Scope | When |
-|-------|------|-------|------|
-| Unit | Jest | pricing, money, allocation, state machines, risk score, mappers | Every phase |
-| Integration | Jest + Supertest + memory Mongo (replica set) | each module's endpoints incl. auth & permissions | Every phase |
-| E2E (API) | Supertest scripts | checkout, return, shipment flows with mocked Razorpay/Bigship | B8–B10 |
-| Contract | OpenAPI validation | Response shapes vs spec | B6, B13 |
-| Concurrency | custom scripts | stock reservation, batch numbers, coupon limits | B5, B8 |
+|---|---|---|---|
+| Unit | Jest | pricing, money, allocation, state machines, margin and earning math, mappers | Every phase |
+| Integration | Jest + Supertest + memory Mongo (replica set) | each module's endpoints incl. auth and permissions | Every phase |
+| E2E (API) | Supertest | checkout, reselling lifecycle, manual return with mocked Razorpay/Bigship | B8–B11 |
+| Concurrency | custom scripts | stock reservation, batch numbers, coupon limits, wallet idempotency | B5, B8, B10 |
+| Leak tests | Supertest | reseller/buyer/staff responses never contain forbidden fields; batch lookup whitelist | B6, B10 |
+| Contract | OpenAPI validation | response shapes | B6, B13 |
 | Load | k6/Artillery | browse + checkout | B13 |
-| Frontend unit/component | Vitest + Testing Library | forms, selectors, price display | F-phases |
-| Frontend E2E | Playwright | critical journeys (CRM product create; storefront purchase; return) | F6, F11 |
-| Manual test scripts | Checklist per phase in `docs/phases/` | You execute before sign-off | Every gate |
-| UAT | Client on staging | Real scenarios | End of CRM & storefront |
-
-**Phase gate template** (copy to `docs/phases/B<N>-signoff.md`):
-```
-Phase: __   Date: __
-[ ] All tasks done      [ ] Automated tests green (attach summary)
-[ ] Manual checklist executed (attach notes)   [ ] No known critical bugs
-[ ] Docs/README/Postman updated   [ ] Migrations/seeds updated
-[ ] Reviewed code diff by me      [ ] Approved to start next phase
-Known issues deferred (with ticket): __
-```
+| Frontend | Vitest + Testing Library, Playwright | forms, price display; CRM product create, storefront purchase, reseller share | F-phases, F7, F11 |
+| Manual | checklist in each sign-off | owner executes before the tag | Every phase |
+| UAT | owner on staging | end of CRM and storefront | F7, F11 |
 
 ---
 
-## 18. Security Checklist
-
-**Auth & sessions**
-- Short-lived access token (≈15 min) + rotating refresh token (httpOnly, Secure, SameSite cookie); revoke on logout/password change; detect refresh-token reuse.
-- Hash passwords (bcrypt cost ≥ 12 / argon2); hash OTPs; rate-limit login/OTP/reset; generic error messages (no user enumeration).
-- Separate admin and customer auth realms; permissions enforced **server-side** on every admin route.
-
-**Input & data**
-- Zod validation everywhere; `express-mongo-sanitize`; `hpp`; payload size limits; strict file upload validation (mime + magic bytes, size, count).
-- Never trust client for price/total/stock/discount/user id/role.
-- Encrypt sensitive fields (refund bank details); mask PII in logs.
-
-**Payments**
-- Verify webhook signature on raw body; idempotent handlers; amount/currency match check; secrets only server-side; no Razorpay secret in frontend.
-
-**Infra**
-- `helmet` (CSP configured for Razorpay & Cloudinary), HTTPS only, CORS whitelist (storefront + CRM origins), secure headers on Next.js, secrets in env/secret manager (never in git), `.env` in `.gitignore`, rotate keys if the old repo's keys were ever committed (**check the old repo history**).
-- Dependency audit (`npm audit`, Dependabot), lockfiles committed, minimal Docker image if used.
-- Webhook endpoints: signature/secret + (if available) IP allowlist.
-- Admin actions audited; sensitive toggles (COD, refunds) require specific permission.
-- Backups (Atlas continuous backup), restore tested; disaster recovery notes.
-- Compliance: Privacy policy, cookie consent if analytics, data deletion/export request process, GST invoice rules `[CONFIRM with CA]`.
+## 20. Security Checklist
+**Auth:** short-lived access token + rotating hashed refresh token; reuse detection; lockout; generic errors; separate admin/customer audiences; permissions enforced server-side on every admin route; sessions revoked on password change.
+**Input/data:** Zod everywhere; `express-mongo-sanitize`; `hpp`; payload limits; strict upload validation (mime + size); never trust client price, margin, total, stock, role, user id; **payout details encrypted at rest**; PII masked in logs.
+**Reselling:** server-side field hiding with leak tests; revocable random share tokens; self-purchase block; immutable idempotent wallet ledger; payout actions permissioned and audited.
+**Payments:** webhook signature on raw body; idempotent handlers; amount/currency match; secrets server-side only.
+**Public endpoints:** batch lookup and share links rate-limited with whitelist serializers.
+**Infra:** helmet (CSP for Razorpay/Cloudinary), HTTPS only, CORS whitelist (storefront + CRM), cookies on same registrable domain (e.g. `api.younora.com`), secrets in env/secret manager, `.env` ignored, `npm audit`, lockfiles, backups with restore drill.
+**Old repo:** check git history for committed keys and **rotate** any Razorpay, Cloudinary, Shiprocket, SMTP, JWT secrets. Never reuse the old `.env`.
+**Compliance:** privacy policy, cookie consent if analytics, GST invoice rules and reseller payout tax treatment **`[CONFIRM with CA]`**.
 
 ---
 
-## 19. Deployment, DevOps & Environments
-
+## 21. Deployment & Environments
 | Component | Suggested hosting `[CONFIRM budget]` |
-|-----------|---------------------------------------|
-| Backend API (+workers) | VPS (e.g., DigitalOcean/Hetzner/AWS Lightsail) with Docker + Nginx + PM2, or Render/Railway; **workers as separate process** |
-| MongoDB | MongoDB Atlas (M10+ for production with backups) |
-| Redis | Managed (Upstash/Redis Cloud) or self-hosted on VPS |
-| Storefront (Next.js) | Vercel or same VPS (Node) |
-| CRM (static) | Vercel/Netlify/Nginx static |
+|---|---|
+| Backend API + job runner | VPS (DigitalOcean/Hetzner/Lightsail) with Docker + Nginx + PM2, or Render/Railway. API and cron runner as separate processes when traffic grows |
+| MongoDB | Atlas M10+ in production (backups) |
+| Storefront | Vercel or the same VPS |
+| CRM | Vercel/Netlify/Nginx static |
 | Media | Cloudinary |
-| DNS/SSL | Cloudflare (+ free SSL, caching, basic WAF) |
-| Monitoring | UptimeRobot/BetterStack, Sentry, logs aggregation |
-
-**CI/CD:** GitHub Actions → lint → test → build → deploy to staging on `develop`, to production on tagged release `main`. Database migrations/seed scripts versioned. Zero-downtime reload (PM2/Docker). Separate `.env` per environment; Razorpay test/live, Bigship sandbox/production keys isolated.
-
-**Process model:** `api` process + `worker` process (BullMQ consumers & cron) so heavy jobs never block requests.
+| DNS/SSL | Cloudflare |
+| Monitoring | UptimeRobot/BetterStack, Sentry |
+CI/CD: GitHub Actions lint → test → build → deploy staging on `develop`, production on tagged release from `main`. Separate `.env` per environment; Razorpay test/live and Bigship sandbox/production keys isolated.
 
 ---
 
-## 20. Git Workflow & Definition of Done
+## 22. Git Workflow, Commit & Tag Convention
+### 22.1 Branches
+`main` (production) ← `develop` (staging) ← `phase/B4-products`, `phase/F2-crm-catalog`. The owner creates the phase branch, commits, merges and tags. **The agent never runs git commands.**
 
-**Branches:** `main` (production) ← `develop` (staging) ← `phase/B4-products`, `feat/...`, `fix/...`.
-**Per phase:** create `phase/<id>` branch → small commits → PR into `develop` → you review the diff (even if AI-written) → CI green → squash merge → tag `v0.<phase>.0`.
+### 22.2 Tag scheme
+| Phases | Tag |
+|---|---|
+| B0–B12 | `v0.<N>.0` (B1 → `v0.1.0`, B10 → `v0.10.0`) |
+| B13 | `v1.0.0-rc.1` |
+| F0–F10 | `fe-v0.<N>.0` |
+| F11 / launch | `v1.0.0` |
 
-**Definition of Done (any task):**
-- Meets acceptance criteria; follows §3 rules; validated inputs; error cases handled
-- Unit + integration tests added and passing; coverage not reduced for critical modules
-- No `console.log`, no dead code, no secrets
-- Docs updated (module README, OpenAPI/Postman)
-- Reviewed by developer; manual check done; audit/notification events included where relevant
-
----
-
-## 21. Antigravity AI Working Protocol
-
-> Keep control of the pace and the design: the AI writes code, **you** decide architecture and approve every phase.
-
-### 21.1 One-time setup
-1. Put this file at `docs/PLAN.md` and create a short **`PROJECT_RULES.md`** (or whatever rules/context file your Antigravity setup supports `[VERIFY]`) containing §3 (Engineering Rules), the folder structure (§8), response format and naming rules.
-2. Commit an initial skeleton so the agent always works inside a real repo with lint/test scripts.
-
-### 21.2 Per-phase loop
-1. **Plan first:** ask the agent to read the phase section and output a **step-by-step implementation plan + file list** — *no code yet*. You approve/adjust.
-2. **Implement in small slices** (one model → one service → routes → tests), not the entire phase in one go.
-3. **Run tests yourself** after each slice (`npm test`); paste failures back, don't let it "assume fixed".
-4. **Review the diff** (git diff) — check for: client-trusted values, missing validation, missing indexes, business logic in controllers, swallowed errors, leaked secrets.
-5. **Manual test** with Postman using the phase's checklist.
-6. **Sign-off** file + merge + tag. Only then open the next phase (new conversation/session recommended to keep context clean).
-
-### 21.3 Reusable prompt template
+### 22.3 Hand-over block (agent prints this at the end of every phase)
+```bash
+# 1) Review: git status && git diff
+# 2) Commit
+git add -A
+git commit -m "feat(<scope>): complete phase <ID> - <short title>" \
+  -m "<3-6 bullet lines of what was built>" \
+  -m "Tests: <n> passing. Sign-off: docs/phases/<ID>-signoff.md"
+# 3) Tag
+git tag -a <tag> -m "Phase <ID>: <short title>"
+# 4) Push (optional)
+git push origin HEAD && git push origin <tag>
 ```
-Context: Younora Luxury Fashion e-commerce, MERN, backend-first modular monolith.
-Follow: Engineering Rules (§3), folder structure (§8), data models (§7), response format.
-Current phase: <B4 — Products & Variants>   (only this phase)
-Do NOT: modify unrelated modules, add libraries without asking, change schemas outside this phase,
-        use floats for money, trust client-sent prices, leave console.log.
-Step 1: Produce an implementation plan (files, functions, endpoints, tests). Wait for my approval.
-Step 2 (after approval): Implement slice <1/2/3…> only, with tests.
-Output: list of changed files + how to run tests + what I should manually verify.
-```
+Commit types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`. One phase = one squash-merged PR (or one commit) plus the tag.
 
-### 21.4 Guardrails
-- Ask the agent to **explain any deviation** from §7/§14 before making it; update the plan file when you agree (Decision Log, §25).
-- Don't let it "refactor everything" mid-phase.
-- Keep third-party API assumptions (Bigship/Razorpay) **verified from official docs** and put sample payloads in `docs/api/samples/`.
-- Regularly ask it to **list known gaps/TODOs** at the end of each slice.
-- Save every important decision, API contract and test result in `docs/` so context is never lost between sessions.
-
----
-
-## 22. Client Meeting Question Bank
-
-**A. Business & Brand**
-1. Target customers (age, regions)? Only women's luxury, or men/kids too (logo suggests women's luxury)? Price range per category?
-2. Number of SKUs at launch and expected monthly orders (year 1)?
-3. Domain name, social handles, brand assets (SVG logo, brand guidelines, photography style)?
-4. Languages (English only/Hindi/Bengali)? Currency INR only?
-5. Reference sites he likes (design/functionality)?
-
-**B. Catalog & Batches**
-6. What exactly is a "batch"? (production lot / purchase lot / per product?) Who creates it and when? Auto-number or manual? Format preference?
-7. Should one product line have multiple batches over time? Which batch shows on invoice if an order spans two?
-8. Do prices differ by size/color? Examples? Wholesale/bulk price needed?
-9. Required product fields (fabric, GSM, care, fit, occasion, model size info, etc.)?
-10. Size standards (S–XXL, numeric, kids age-based, free size)? Size charts per category?
-11. Does he need product videos? How many images per color?
-12. Barcode/QR on labels? Own SKU naming?
-
-**C. Pricing, Tax & Invoice**
-13. GST registered? GSTIN, state, HSN codes, GST slabs per category (get CA confirmation)? Prices inclusive or exclusive of GST?
-14. Invoice format/branding/terms? Financial-year numbering?
-15. Coupon types wanted? First-order discounts? Free shipping threshold? Festival sales scheduling?
-
-**D. Orders, Payments & COD**
-16. COD policy: limits, fee, pincode restrictions, confirmation call/OTP? Who toggles it?
-17. Razorpay account ready (KYC/live)? Refund policy timing? Partial payments/advance for COD?
-18. Guest checkout allowed? Login by email/phone/OTP? (OTP delivery without SMS/WhatsApp → email OTP or none)
-19. Order cancellation rules (until packed? until shipped?)?
-
-**E. Shipping (Bigship)**
-20. Bigship account/API access status? Sandbox credentials? Pickup address(es)? Packaging sizes/weights per product type?
-21. Courier preference rules (cheapest, fastest, preferred partners)? Free shipping or flat charges? International shipping (no for v1)?
-22. NDR/RTO handling process? Who coordinates with couriers?
-
-**F. Returns (core pain point)**
-23. Return window? Which products are non-returnable? Exchange-only for size issues? Who pays reverse shipping?
-24. Required proof (photos, unboxing video, packing video)? Who performs QC and how?
-25. Policy for suspicious/serial returners (restrict COD, block)? Refund method for COD orders?
-26. Partial refund rules for used/damaged items?
-
-**G. Reviews**
-27. Who can review? Auto-publish or approve first? Photo reviews? Should admin be able to edit reviews or only hide/reply?
-28. Importing old Meesho reviews? (Likely not allowed/possible — confirm.)
-
-**H. Notifications**
-29. Which events must notify customers/admin? Offers/broadcast pushes wanted? Quiet hours? Admin devices to receive pushes (phone/desktop)?
-30. Is installing the site as an app (PWA) acceptable for iOS users? Native app in the future?
-
-**I. CRM & Team**
-31. Staff count and roles (owner, inventory person, order packer, support)? What each can see/do (permissions)?
-32. Reports he needs (daily sales, GST, batch-wise, return reasons, profit)? Export formats?
-33. Does he want to see profit/cost price in CRM (restrict visibility to owner)?
-
-**J. Legal, Content & Marketing**
-34. Terms, Privacy, Shipping, Return policy text — who provides? About/Contact content?
-35. Analytics/ads tracking (GA4, Meta Pixel, Google Search Console)? Instagram/WhatsApp catalog linking?
-36. SEO needs (blog? collections pages?) 
-
-**K. Operations & Budget**
-37. Hosting budget (Atlas, Redis, VPS, Cloudinary, email)? Who owns accounts (client should own them)?
-38. Launch deadline & phased launch preference (CRM first, then storefront)? Training/handover expectations? Post-launch support/maintenance scope?
-39. Data migration: existing products/customers from Meesho or Excel?
-40. Any competitor features he explicitly wants or explicitly doesn't want?
+### 22.4 Definition of Done (every phase)
+Acceptance criteria met · §3 rules followed · inputs validated and errors handled · unit + integration tests added and passing · lint clean · no `console.log`, dead code or secrets · module README, OpenAPI/Postman and PROGRESS.md updated · sign-off file written · owner has reviewed the diff and done the manual checks.
 
 ---
 
 ## 23. Risks & Mitigations
+| Risk | Mitigation |
+|---|---|
+| Reselling tax treatment (second invoice, margin payouts, TDS) | CA sign-off before launch; rules settings-driven; invoices isolated in one service |
+| Sensitive data leaking to resellers/buyers/staff | Server-side serializer + automated leak tests + `resellers.view-sensitive` |
+| Reselling abuse (self-purchase, fake orders, wallet double-credit) | Self-purchase block, hold period, idempotent immutable ledger, admin audit |
+| Manual returns drift from system | One register entry updates stock, batch, refund and wallet together; audit |
+| Bigship API differences / outages | Sandbox spike at B9 start, adapter, retry job, manual AWB fallback |
+| Overselling, webhook duplicates | Atomic reservation, idempotency keys, concurrency tests |
+| GST miscalculation | Golden tests + CA review before B8 release |
+| Scope creep | §24 deferred list, phase gating, decision log |
+| AI code quality drift | Briefing-first protocol, tests, owner reviews every diff, rules file |
+| Single-developer bottleneck | Phase gates, sign-off docs, MVP cut-line |
 
-| Risk | Impact | Mitigation |
-|------|--------|-----------|
-| Bigship API differences/limits (rate, webhooks missing) | Shipping delays | Early sandbox spike in B9 start; adapter pattern; polling fallback; manual AWB entry fallback in CRM |
-| Overselling (race conditions) | Cancelled orders, bad reviews | Atomic reservation + concurrency tests (B5/B8) |
-| Payment/webhook edge cases | Paid orders lost or duplicated | Webhook as truth, idempotency, reconciliation job & admin report |
-| Batch requirement ambiguity | Rework in inventory & invoice | Resolve in meeting (Q6–7) before B5; keep allocation logic isolated |
-| GST miscalculation | Compliance issues | Pricing golden tests + CA review before B8 release |
-| Return abuse still occurs | Business pain not solved | Proof capture, QC, risk score, batch analytics; tune with real data |
-| Web Push on iOS limitations | Some users won't get push | In-app center always; PWA install prompt; email for critical transactional messages; consider app later |
-| Scope creep after meeting | Delays | Change log (§25), phase gating, estimate impact before accepting |
-| AI-generated code quality drift | Bugs/security holes | Plan-first protocol, tests, diff review, rules file |
-| Single developer bottleneck | Slow delivery | Phase gates, MVP cut-line (below), documentation |
-| Third-party keys leaked (old repo) | Security | Audit old repo history, rotate any exposed keys, never reuse old `.env` |
-| Large images slowing site | Poor UX/SEO | Cloudinary transformations, Next/Image, WebP/AVIF, lazy loading |
-
-**MVP cut-line (if timeline must shrink):** B0–B8 + B9 (shipping) + minimal B10 (return request & manual refund) + B11 (reviews basic) → CRM F0–F5 → storefront F7–F9. Defer: broadcast pushes, advanced reports, exchange flow, risk automation, PWA polish.
+**MVP cut-line (if time shrinks):** B0–B9 + B11 (returns register + basic reviews) + B10 reselling, CRM F0–F6, storefront F8–F10. Defer dashboard polish, advanced reports, Web Push.
 
 ---
 
-## 24. Future Roadmap / Add-On Ideas
-
-**Conversion & retention**
-- Size recommendation using review fit-feedback & body measurements
-- "Complete the look" / bundles / buy-2-get-1 / free shipping progress bar
-- Back-in-stock & price-drop push alerts; abandoned cart push (already planned)
-- Loyalty points / store credit / referral codes
-- Recently viewed, personalized recommendations
-- Pre-orders & waitlists for limited drops (fits luxury positioning)
-- Gift wrapping, gift cards, personalized message on package
-
-**Operations**
-- Barcode/QR label printing & scanner-based packing (scan to verify correct item/batch)
-- Multi-warehouse, supplier/purchase-order module, profit & margin dashboard
-- Accounting export (Tally/Zoho), auto GST reports
-- Fraud/risk dashboard, address validation, pincode blacklist learning
-
-**Marketing**
-- Instagram/WhatsApp catalog & shareable product cards, UTM tracking, Google Merchant feed
-- Lookbooks/collections pages, blog/editorial (SEO)
-- Influencer/affiliate codes
-
-**Platform**
-- Native mobile app (React Native) reusing the same API; FCM/APNs added to notification service
-- Multi-language, multi-currency
-- AI-assisted product descriptions/tags from images (admin productivity)
+## 24. Deferred Features / Roadmap
+In-app return requests with photo proof and exchange flow · customer risk score and COD automation · Web Push/PWA · broadcast offers and abandoned-cart nudges · automatic reseller payouts, reseller tiers, multi-level reselling, per-variant margins · size recommendation from fit feedback · bundles, loyalty/store credit · barcode scanning at packing · multi-warehouse and purchase orders · accounting export (Tally/Zoho) · Instagram/WhatsApp catalog, Google Merchant feed · native app (React Native, same API) · multi-language.
 
 ---
 
-## 25. Decision Log & Change Log
+## 25. Decision Log & Open Questions
+### 25.1 Decisions
+| # | Decision |
+|---|---|
+| D1 | Modular monolith, Node/Express 5/Mongo, **CommonJS** |
+| D2 | Backend → CRM → Storefront; one phase at a time with briefing, approval, sign-off, commit + tag |
+| D3 | Bigship via adapter; Razorpay + COD toggle |
+| D4 | In-app notifications (Socket.IO); no SMS/WhatsApp; Web Push later |
+| D5 | Variants (colour × size) + batches; money in paise |
+| D6 | **No in-app returns**; Manual Returns Register only |
+| D7 | **Reselling = reseller-set margin** (Meesho-style); buyer pays base + margin; reseller earns margin after delivery + hold |
+| D8 | **Reselling Invoice goes to the buyer** at final price; internal invoice (base, batch) stays in CRM |
+| D9 | Hidden fields enforced server-side, settings-driven, with leak tests |
+| D10 | Batch searchable in CRM and publicly (whitelisted fields) |
+| D11 | No Redis/BullMQ, no risk scoring, no Web Push in v1; jobs via `jobs` collection + node-cron |
+| D12 | Only `shared-constants` is a shared package; Zod per module |
+| D13 | Customer login = email + password + email verification |
+| D14 | Auth: DB-loaded permissions, rotating hashed refresh tokens, separate admin/customer cookies |
 
-### 25.1 Decisions made so far
-| # | Date | Decision | Reason |
-|---|------|----------|--------|
-| D1 | 2026-11-04 | Modular monolith (Node/Express/Mongo) | Right size for one client; easy to evolve |
-| D2 | 2026-11-04 | Backend first, then CRM, then storefront | Client/owner request; stable API contract |
-| D3 | 2026-11-04 | Bigship for shipping via adapter | Client requirement; swap-ready |
-| D4 | 2026-11-04 | Razorpay + COD toggle | Client requirement |
-| D5 | 2026-11-04 | In-house notifications: Socket.IO + Web Push (VAPID), no SMS/WhatsApp | Client requirement |
-| D6 | 2026-11-04 | Variants (color × size) + Batch model | Garment requirements |
-| D7 | 2026-11-04 | Money in paise (integers) | Avoid float errors |
-| D8 | 2026-11-04 | Next.js storefront, React+Vite CRM | SEO vs admin simplicity |
-| D9 | 2026-11-04 | Old code reused selectively (see §9) | Avoid inheriting nursery-specific/legacy issues |
-
-### 25.2 Open items to resolve after the meeting
-- [ ] Batch definition & numbering format (Q6–Q7)
-- [ ] COD rules & confirmation (Q16)
-- [ ] Customer login method without SMS (Q18)
-- [ ] Return policy parameters (Q23–Q26)
-- [ ] GST handling & invoice format (Q13–Q14)
-- [ ] Bigship credentials, sandbox & pickup setup (Q20)
-- [ ] Hosting & budget (Q37)
-- [ ] Review moderation mode (Q27)
-- [ ] Guest checkout (Q18)
-
-### 25.3 Change log
-| Version | Date | Change | By |
-|---------|------|--------|----|
-| 1.0 | 2026-11-04 | Initial plan created before client meeting | — |
+### 25.2 Open questions (answer before the phase that needs them)
+| # | Question | Needed by |
+|---|---|---|
+| Q1 | Margin limits per category and whether final price may exceed MRP | B7 |
+| Q2 | Reselling Invoice: exact content and legal/GST treatment (CA); optional "Shared by" line | B8 |
+| Q3 | Reseller signup: open, approval, or invite; KYC (PAN/bank) | B10 |
+| Q4 | Hold days (7?), minimum payout, payout schedule | B10 |
+| Q5 | Guest checkout allowed? Guest buyers via share links? | B7 |
+| Q6 | COD allowed on reseller orders? COD limits and fee | B8 |
+| Q7 | Batch definition and format; what customers see on public batch search | B5 |
+| Q8 | GSTIN, state, HSN codes, inclusive vs exclusive pricing | B7 |
+| Q9 | Bigship account, sandbox, pickup address, packaging sizes | B9 |
+| Q10 | Return policy text for the policy page; refund timing/modes | B11 |
+| Q11 | Review moderation mode | B11 |
+| Q12 | Hosting budget and account ownership; data to migrate | B13 |
 
 ---
 
-### Quick-start checklist (Day 1)
-- [ ] Create GitHub repo + monorepo skeleton (Phase B0)
-- [ ] Create MongoDB Atlas dev cluster, Cloudinary account, Redis (local/Upstash)
-- [ ] Razorpay **test** keys; request **Bigship sandbox** access
-- [ ] Gather logo in SVG/high-res PNG from the client
-- [ ] Prepare meeting using §22 and update §25.2 afterward
-- [ ] Add `PROJECT_RULES.md` (from §3) for Antigravity
-- [ ] Start Antigravity **Phase B0 — plan-first**, review, implement, test, sign-off
+## 26. Appendix
 
-*End of document — Younora Luxury Fashion Master Plan v1.0*
+### 26.1 Permission list (`shared-constants`)
+```
+products.read, products.write, categories.manage,
+inventory.read, inventory.write, inventory.view-cost, batches.search,
+orders.read, orders.write, orders.refund, shipping.manage,
+payments.settings, manual-returns.manage,
+reviews.manage, customers.read, customers.manage,
+coupons.manage, cms.manage, settings.manage,
+resellers.manage, resellers.view-sensitive, reselling-invoices.read, payouts.manage,
+reports.read, audit.read, staff.manage
+```
+`SUPER_ADMIN` has all. `STAFF` gets only assigned permissions.
+
+### 26.2 Key enums
+- Order status: `PENDING_PAYMENT, CONFIRMED, PACKED, READY_TO_SHIP, SHIPPED, OUT_FOR_DELIVERY, DELIVERED, CANCELLED, RTO, COMPLETED`
+- Payment: `PENDING, PAID, FAILED, REFUNDED, PARTIAL_REFUND, COD_PENDING, COD_COLLECTED`
+- Reseller status: `NONE, PENDING, APPROVED, REJECTED, SUSPENDED`
+- Wallet type / status: `EARNING, REVERSAL, PAYOUT, ADJUSTMENT` / `PENDING, AVAILABLE, PAID, REVERSED`
+- Payout: `REQUESTED, PAID, REJECTED`
+- Invoice type: `INTERNAL, RESELLING`
+- Stock movement: `RECEIVE, RESERVE, RELEASE, SALE, RETURN_RESTOCK, DAMAGE, ADJUST, CANCEL`
+
+### 26.3 Phase sign-off template (`docs/phases/<ID>-signoff.md`)
+```
+# Phase <ID> — <Name> — Sign-off
+Date: __        Tag: __        Branch: __
+
+## 1. Summary
+What was built (modules, endpoints/screens, models).
+
+## 2. Files
+Created / changed (grouped by module).
+
+## 3. Automated checks (real output)
+- Lint: pass/fail
+- Tests: <passed>/<total> (unit __, integration __, e2e __)
+- Phase test checklist from PLAN.md: each item → test name
+
+## 4. Manual checks for the owner
+[ ] step 1 (Postman/UI) …   [ ] step 2 …
+
+## 5. Decisions made / deviations from plan
+(with owner approval reference)
+
+## 6. Known issues and deferred items
+(with reason)
+
+## 7. Docs updated
+[ ] module README  [ ] OpenAPI/Postman  [ ] PROGRESS.md  [ ] PLAN.md decision log
+
+## 8. Owner approval
+[ ] Diff reviewed   [ ] Manual checks done   [ ] Approved to start next phase
+```
+
+### 26.4 `PROJECT_RULES.md` (what to put in it)
+Paste §2 (Agent Operating Protocol) and §3 (Engineering Rules) verbatim, plus one line: *"The single source of truth is docs/PLAN.md. Work only on the phase the owner names."*
+
+### 26.5 First command after adding this file
+Owner types in Antigravity: **"Start Phase B1"** — the agent reads this file and, per §2, shows the briefing for the remaining B1 slices (2–6) and asks for permission to write code.
+
+*End of document — Younora Luxury Fashion Master Plan v3.0*

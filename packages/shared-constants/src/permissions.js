@@ -1,5 +1,5 @@
 /**
- * Younora Canonical Staff Permissions
+ * Younora Canonical Staff Permissions (docs/PLAN.md v3.0 §26.1)
  */
 const PERMISSIONS = Object.freeze({
   // Catalog
@@ -7,15 +7,21 @@ const PERMISSIONS = Object.freeze({
   PRODUCTS_WRITE: 'products.write',
   CATEGORIES_MANAGE: 'categories.manage',
 
-  // Inventory
+  // Inventory & Batches
   INVENTORY_READ: 'inventory.read',
+  INVENTORY_WRITE: 'inventory.write',
   INVENTORY_MANAGE: 'inventory.manage',
   INVENTORY_VIEW_COST: 'inventory.view-cost',
+  BATCHES_SEARCH: 'batches.search',
 
   // Orders & Fulfillment
   ORDERS_READ: 'orders.read',
   ORDERS_WRITE: 'orders.write',
+  ORDERS_REFUND: 'orders.refund',
   SHIPPING_MANAGE: 'shipping.manage',
+
+  // Payments & Settings
+  PAYMENTS_SETTINGS: 'payments.settings',
 
   // Returns
   RETURNS_MANAGE: 'returns.manage',
@@ -27,6 +33,7 @@ const PERMISSIONS = Object.freeze({
   CUSTOMERS_MANAGE: 'customers.manage',
 
   // Resellers & Payouts
+  RESELLERS_MANAGE: 'resellers.manage',
   RESELLERS_VIEW_SENSITIVE: 'resellers.view-sensitive',
   RESELLING_INVOICES_READ: 'reselling-invoices.read',
   PAYOUTS_MANAGE: 'payouts.manage',

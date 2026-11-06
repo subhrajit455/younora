@@ -4,11 +4,13 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
 const hpp = require('hpp');
+const cookieParser = require('cookie-parser');
 const pinoHttp = require('pino-http');
 
 const { env } = require('./config/env');
 const logger = require('./core/logger');
 const healthRoutes = require('./routes/health.routes');
+const authRoutes = require('./modules/auth/auth.routes');
 const notFoundHandler = require('./core/http/notFoundHandler');
 const errorMiddleware = require('./core/errors/errorMiddleware');
 const AppError = require('./core/errors/appError');
@@ -49,9 +51,10 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Body parsing
+// Body and cookie parsing
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(cookieParser());
 
 // Data sanitization against NoSQL query injection (Express 5 compatible)
 app.use((req, res, next) => {
@@ -89,6 +92,7 @@ if (env.NODE_ENV !== 'test') {
 
 // Routes
 app.use(env.API_PREFIX, healthRoutes);
+app.use(`${env.API_PREFIX}/auth`, authRoutes);
 app.use('/', healthRoutes); // Also expose /health at root for orchestrators
 
 // 404 Handler

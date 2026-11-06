@@ -22,6 +22,20 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+
+  // Auth & Security
+  JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters').default('younora-super-secret-access-token-key-32chars-min!'),
+  JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 characters').default('younora-super-secret-refresh-token-key-32chars-min!'),
+  JWT_ACCESS_EXPIRY: z.string().default('15m'),
+  JWT_REFRESH_EXPIRY: z.string().default('7d'),
+  BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(12).default(12),
+  MAX_LOGIN_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  LOCKOUT_TIME_MS: z.coerce.number().int().positive().default(900000),
+
+  // Super Admin Seed
+  SUPER_ADMIN_NAME: z.string().default('Super Admin'),
+  SUPER_ADMIN_EMAIL: z.string().email().default('admin@younora.com'),
+  SUPER_ADMIN_PASSWORD: z.string().min(8).default('SuperAdmin@123456'),
 });
 
 function parseEnv(envSource = process.env) {
