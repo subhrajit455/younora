@@ -19,6 +19,8 @@ module.exports = [
         clearTimeout: 'readonly',
         setInterval: 'readonly',
         clearInterval: 'readonly',
+        setImmediate: 'readonly',
+        clearImmediate: 'readonly',
         describe: 'readonly',
         test: 'readonly',
         it: 'readonly',

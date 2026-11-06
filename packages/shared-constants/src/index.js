@@ -91,6 +91,31 @@ const RETURN_REASONS = Object.freeze({
   OTHER: 'OTHER',
 });
 
+const NOTIFICATION_RECIPIENT_TYPE = Object.freeze({
+  CUSTOMER: 'CUSTOMER',
+  ADMIN: 'ADMIN',
+});
+
+const EVENT_NAMES = Object.freeze({
+  ORDER_PLACED: 'order.placed',
+  PAYMENT_FAILED: 'payment.failed',
+  ORDER_SHIPPED: 'order.shipped',
+  ORDER_OUT_FOR_DELIVERY: 'order.out_for_delivery',
+  ORDER_DELIVERED: 'order.delivered',
+  ORDER_CANCELLED: 'order.cancelled',
+  SHIPMENT_FAILED: 'shipment.failed',
+  STOCK_LOW: 'stock.low',
+  STOCK_OUT: 'stock.out',
+  REVIEW_CREATED: 'review.created',
+  RESELLER_APPLIED: 'reseller.applied',
+  RESELLER_APPROVED: 'reseller.approved',
+  RESELLER_ORDER_PLACED: 'reseller.order.placed',
+  RESELLER_EARNING_AVAILABLE: 'reseller.earning.available',
+  PAYOUT_REQUESTED: 'payout.requested',
+  PAYOUT_PAID: 'payout.paid',
+  MANUAL_RETURN_RECORDED: 'manual_return.recorded',
+});
+
 module.exports = {
   ROLES,
   USER_TYPES,
@@ -105,4 +130,6 @@ module.exports = {
   PAYMENT_STATUS,
   RETURN_STATUS,
   RETURN_REASONS,
+  NOTIFICATION_RECIPIENT_TYPE,
+  EVENT_NAMES,
 };

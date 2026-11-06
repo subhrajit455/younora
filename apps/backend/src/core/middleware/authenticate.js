@@ -11,9 +11,11 @@ const ERROR_CODES = require('../errors/errorCodes');
  * Verifies JWT and loads user directly from DB on every request.
  * Roles and permissions are retrieved from the database, not trusted from token.
  *
- * @param {string} expectedAudience 'younora:admin' | 'younora:customer'
+ * @param {string|string[]} expectedAudience 'younora:admin' | 'younora:customer' | ['younora:admin', 'younora:customer']
  */
 function authenticate(expectedAudience = TOKEN_AUDIENCE.ADMIN) {
+  const allowedAudiences = Array.isArray(expectedAudience) ? expectedAudience : [expectedAudience];
+
   return async (req, res, next) => {
     try {
       const authHeader = req.headers.authorization;
@@ -28,7 +30,7 @@ function authenticate(expectedAudience = TOKEN_AUDIENCE.ADMIN) {
 
       try {
         decoded = jwt.verify(token, env.JWT_ACCESS_SECRET, {
-          audience: expectedAudience,
+          audience: allowedAudiences,
         });
       } catch (err) {
         if (err.name === 'TokenExpiredError') {
@@ -41,11 +43,13 @@ function authenticate(expectedAudience = TOKEN_AUDIENCE.ADMIN) {
         );
       }
 
+      const tokenAudience = decoded.aud;
+
       // Load live user from DB per Rule 4
       let user = null;
-      if (expectedAudience === TOKEN_AUDIENCE.ADMIN) {
+      if (tokenAudience === TOKEN_AUDIENCE.ADMIN) {
         user = await AdminUser.findById(decoded.sub);
-      } else if (expectedAudience === TOKEN_AUDIENCE.CUSTOMER) {
+      } else if (tokenAudience === TOKEN_AUDIENCE.CUSTOMER) {
         user = await Customer.findById(decoded.sub);
       }
 
@@ -56,12 +60,12 @@ function authenticate(expectedAudience = TOKEN_AUDIENCE.ADMIN) {
       }
 
       // Check active / blocked status
-      if (expectedAudience === TOKEN_AUDIENCE.ADMIN && !user.isActive) {
+      if (tokenAudience === TOKEN_AUDIENCE.ADMIN && !user.isActive) {
         return next(
           new AppError(401, ERROR_CODES.UNAUTHORIZED, 'Account has been deactivated')
         );
       }
-      if (expectedAudience === TOKEN_AUDIENCE.CUSTOMER && user.isBlocked) {
+      if (tokenAudience === TOKEN_AUDIENCE.CUSTOMER && user.isBlocked) {
         return next(
           new AppError(401, ERROR_CODES.UNAUTHORIZED, 'Account has been blocked')
         );
@@ -82,7 +86,7 @@ function authenticate(expectedAudience = TOKEN_AUDIENCE.ADMIN) {
       }
 
       req.user = user;
-      req.tokenAudience = expectedAudience;
+      req.tokenAudience = tokenAudience;
       next();
     } catch (error) {
       next(error);

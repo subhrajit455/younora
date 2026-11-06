@@ -13,6 +13,12 @@ const healthRoutes = require('./routes/health.routes');
 const authRoutes = require('./modules/auth/auth.routes');
 const usersRoutes = require('./modules/users/users.routes');
 const auditRoutes = require('./modules/audit/audit.routes');
+const notificationsRoutes = require('./modules/notifications/notifications.routes');
+const devEmitterRoutes = require('./modules/notifications/devEmitter.routes');
+const { registerNotificationSubscribers } = require('./modules/notifications/notifications.subscriber');
+
+// Initialize event subscribers
+registerNotificationSubscribers();
 const notFoundHandler = require('./core/http/notFoundHandler');
 const errorMiddleware = require('./core/errors/errorMiddleware');
 const AppError = require('./core/errors/appError');
@@ -97,6 +103,12 @@ app.use(env.API_PREFIX, healthRoutes);
 app.use(`${env.API_PREFIX}/auth`, authRoutes);
 app.use(env.API_PREFIX, usersRoutes);
 app.use(env.API_PREFIX, auditRoutes);
+
+if (env.NODE_ENV !== 'production') {
+  app.use(`${env.API_PREFIX}/notifications`, devEmitterRoutes);
+}
+
+app.use(`${env.API_PREFIX}/notifications`, notificationsRoutes);
 app.use('/', healthRoutes); // Also expose /health at root for orchestrators
 
 // 404 Handler

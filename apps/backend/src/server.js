@@ -1,6 +1,8 @@
+const http = require('http');
 const app = require('./app');
 const { env } = require('./config/env');
 const { connectDB, disconnectDB } = require('./config/db');
+const { initSocketServer, closeSocketServer } = require('./core/socket/socketServer');
 const logger = require('./core/logger');
 
 let server;
@@ -10,7 +12,10 @@ async function startServer() {
     // Connect to database
     await connectDB();
 
-    server = app.listen(env.PORT, () => {
+    server = http.createServer(app);
+    initSocketServer(server);
+
+    server.listen(env.PORT, () => {
       logger.info({
         port: env.PORT,
         env: env.NODE_ENV,
@@ -29,6 +34,7 @@ async function gracefulShutdown(signal) {
   logger.info({ signal, msg: 'Received shutdown signal. Closing server...' });
 
   if (server) {
+    await closeSocketServer();
     server.close(async () => {
       logger.info({ msg: 'HTTP server closed.' });
       try {
