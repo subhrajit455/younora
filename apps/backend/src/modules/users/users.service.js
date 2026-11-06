@@ -5,6 +5,7 @@ const AdminUser = require('./models/adminUser.model');
 const Customer = require('./models/customer.model');
 const Address = require('./models/address.model');
 const RefreshToken = require('./models/refreshToken.model');
+const AuditService = require('../audit/audit.service');
 const AppError = require('../../core/errors/appError');
 const ERROR_CODES = require('../../core/errors/errorCodes');
 
@@ -12,7 +13,10 @@ class UsersService {
   /**
    * Create a new staff member (SUPER_ADMIN only)
    */
-  static async createStaff({ name, email, password, role = ROLES.STAFF, permissions = [] }) {
+  static async createStaff(
+    { name, email, password, role = ROLES.STAFF, permissions = [] },
+    context = {}
+  ) {
     const normalizedEmail = email.toLowerCase().trim();
 
     const existingUser = await AdminUser.findOne({ email: normalizedEmail });
@@ -34,6 +38,24 @@ class UsersService {
       role,
       permissions: role === ROLES.SUPER_ADMIN ? [] : permissions,
       isActive: true,
+    });
+
+    await AuditService.record({
+      actor: context.actor,
+      action: 'staff.create',
+      entity: 'AdminUser',
+      entityId: newStaff._id,
+      before: null,
+      after: {
+        id: newStaff._id,
+        name: newStaff.name,
+        email: newStaff.email,
+        role: newStaff.role,
+        permissions: newStaff.permissions,
+        isActive: newStaff.isActive,
+      },
+      ip: context.ip,
+      userAgent: context.userAgent,
     });
 
     return {
@@ -107,7 +129,7 @@ class UsersService {
   /**
    * Update staff member (name, role, permissions)
    */
-  static async updateStaff(staffId, updates, _actorUser) {
+  static async updateStaff(staffId, updates, actorUser, context = {}) {
     const user = await AdminUser.findById(staffId);
     if (!user) {
       throw new AppError(404, ERROR_CODES.NOT_FOUND, 'Staff member not found');
@@ -133,11 +155,32 @@ class UsersService {
       }
     }
 
+    const before = {
+      name: user.name,
+      role: user.role,
+      permissions: user.permissions,
+    };
+
     if (updates.name !== undefined) user.name = updates.name;
     if (updates.role !== undefined) user.role = updates.role;
     if (updates.permissions !== undefined) user.permissions = updates.permissions;
 
     await user.save();
+
+    await AuditService.record({
+      actor: actorUser,
+      action: 'staff.update',
+      entity: 'AdminUser',
+      entityId: user._id,
+      before,
+      after: {
+        name: user.name,
+        role: user.role,
+        permissions: user.permissions,
+      },
+      ip: context.ip,
+      userAgent: context.userAgent,
+    });
 
     return {
       id: user._id,
@@ -154,7 +197,7 @@ class UsersService {
    * Deactivate staff member
    * Enforces Rule 8: Super Admin cannot deactivate themselves or the last active Super Admin
    */
-  static async deactivateStaff(staffId, actorUser) {
+  static async deactivateStaff(staffId, actorUser, context = {}) {
     if (staffId.toString() === actorUser._id.toString()) {
       throw new AppError(
         400,
@@ -197,6 +240,17 @@ class UsersService {
       }
     );
 
+    await AuditService.record({
+      actor: actorUser,
+      action: 'staff.deactivate',
+      entity: 'AdminUser',
+      entityId: user._id,
+      before: { isActive: true },
+      after: { isActive: false },
+      ip: context.ip,
+      userAgent: context.userAgent,
+    });
+
     return {
       id: user._id,
       email: user.email,
@@ -207,7 +261,7 @@ class UsersService {
   /**
    * Reactivate staff member
    */
-  static async reactivateStaff(staffId, _actorUser) {
+  static async reactivateStaff(staffId, actorUser, context = {}) {
     const user = await AdminUser.findById(staffId);
     if (!user) {
       throw new AppError(404, ERROR_CODES.NOT_FOUND, 'Staff member not found');
@@ -215,6 +269,17 @@ class UsersService {
 
     user.isActive = true;
     await user.save();
+
+    await AuditService.record({
+      actor: actorUser,
+      action: 'staff.reactivate',
+      entity: 'AdminUser',
+      entityId: user._id,
+      before: { isActive: false },
+      after: { isActive: true },
+      ip: context.ip,
+      userAgent: context.userAgent,
+    });
 
     return {
       id: user._id,
@@ -260,7 +325,7 @@ class UsersService {
    * Change admin password
    * Requires current password verification and revokes other active sessions
    */
-  static async changeAdminPassword(adminId, currentPassword, newPassword) {
+  static async changeAdminPassword(adminId, currentPassword, newPassword, context = {}) {
     const admin = await AdminUser.findById(adminId).select('+passwordHash');
     if (!admin) {
       throw new AppError(404, ERROR_CODES.NOT_FOUND, 'Admin user not found');
@@ -286,6 +351,17 @@ class UsersService {
         },
       }
     );
+
+    await AuditService.record({
+      actor: admin,
+      action: 'auth.admin.password-change',
+      entity: 'AdminUser',
+      entityId: admin._id,
+      before: null,
+      after: { passwordChangedAt: admin.passwordChangedAt },
+      ip: context.ip,
+      userAgent: context.userAgent,
+    });
 
     return { message: 'Password updated successfully' };
   }

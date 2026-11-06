@@ -3,7 +3,8 @@
 ## Status
 - **Phase:** B1 — Auth, Users, Roles & Permissions
 - **Target Tag:** `v0.1.0`
-- **Current Slice:** Slice 5 (Completed)
+- **Current Slice:** Slice 6 (Completed — All B1 Slices 1–6 Finished)
+- **Phase B1 Gate:** **PASSED (100/100 tests passing across 9 test suites)**
 
 ---
 
@@ -82,14 +83,24 @@
   - `src/modules/users/users.controller.js` (profile and address request handlers)
   - `src/modules/users/users.routes.js` (mounted `/api/v1/admin/me`, `/api/v1/me`, `/api/v1/addresses/*`)
   - `tests/integration/profileAndAddress.test.js` (15 integration tests covering admin profile & password changes, customer profile & password changes, session revocations, address CRUD, Indian PIN/phone validation, max 10 address limit, auto default switching & promotion on delete, and multi-tenant customer isolation)
-- [ ] **Slice 6: Audit Logging & Security Hardening**
+- [x] **Slice 6: Audit Logging & Security Hardening**
+  - `src/modules/audit/models/auditLog.model.js` (immutable audit log model: actor, actorRole, action, entity, entityId, before, after, ip, userAgent)
+  - `src/core/utils/redact.js` (recursive deep redaction utility protecting passwords, tokens, hashes, and secrets)
+  - `src/modules/audit/audit.service.js` (automatic redaction, audit logging service, and paginated query filtering)
+  - `src/modules/audit/audit.validation.js` (audit query Zod schema)
+  - `src/modules/audit/audit.controller.js` & `src/modules/audit/audit.routes.js` (mounted `GET /api/v1/admin/audit-logs` gated by `requirePermission('audit.read')`)
+  - Hooked audit logging into staff create/update/deactivate/reactivate, admin login, and admin password change
+  - `tests/integration/auditLogging.test.js` (13 integration tests covering automated audit trail creation, deep redaction, permission checks, customer rejection, and immutability)
 
 ---
 
-## Slice Verification
+## Slice Verification & Sign-Off Gate
 - **Slice 1:** 26/26 tests passing (`models.test.js`, `health.test.js`, `error.test.js`, `env.test.js`).
 - **Slice 2:** 42/42 tests passing (added `adminAuth.test.js` with 16 integration tests).
 - **Slice 3:** 57/57 tests passing (added `staffManagement.test.js` with 15 integration tests).
 - **Slice 4:** 72/72 tests passing (added `customerAuth.test.js` with 15 integration tests).
 - **Slice 5:** 87/87 tests passing (added `profileAndAddress.test.js` with 15 integration tests).
+- **Slice 6:** 100/100 tests passing (added `auditLogging.test.js` with 13 integration tests across 9 suites).
 - **Linter:** ESLint clean (0 errors, 0 warnings).
+- **Security Check:** All endpoints enforce audience isolation, bcrypt cost >= 12, rate limiting, and standard envelope responses.
+- **Phase B1 Sign-off Status:** **COMPLETED & READY FOR RELEASE TAG**

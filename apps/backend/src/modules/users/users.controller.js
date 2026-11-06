@@ -4,7 +4,12 @@ const { sendSuccess } = require('../../core/http/response');
 class UsersController {
   static async createStaff(req, res, next) {
     try {
-      const staff = await UsersService.createStaff(req.body);
+      const context = {
+        actor: req.user,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+      };
+      const staff = await UsersService.createStaff(req.body, context);
       return sendSuccess(res, {
         statusCode: 201,
         message: 'Staff member created successfully',
@@ -42,7 +47,11 @@ class UsersController {
 
   static async updateStaff(req, res, next) {
     try {
-      const staff = await UsersService.updateStaff(req.params.id, req.body, req.user);
+      const context = {
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+      };
+      const staff = await UsersService.updateStaff(req.params.id, req.body, req.user, context);
       return sendSuccess(res, {
         message: 'Staff member updated successfully',
         data: staff,
@@ -54,7 +63,11 @@ class UsersController {
 
   static async deactivateStaff(req, res, next) {
     try {
-      const result = await UsersService.deactivateStaff(req.params.id, req.user);
+      const context = {
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+      };
+      const result = await UsersService.deactivateStaff(req.params.id, req.user, context);
       return sendSuccess(res, {
         message: 'Staff member deactivated successfully',
         data: result,
@@ -66,7 +79,11 @@ class UsersController {
 
   static async reactivateStaff(req, res, next) {
     try {
-      const result = await UsersService.reactivateStaff(req.params.id, req.user);
+      const context = {
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+      };
+      const result = await UsersService.reactivateStaff(req.params.id, req.user, context);
       return sendSuccess(res, {
         message: 'Staff member reactivated successfully',
         data: result,
@@ -103,10 +120,15 @@ class UsersController {
 
   static async changeAdminPassword(req, res, next) {
     try {
+      const context = {
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+      };
       const result = await UsersService.changeAdminPassword(
         req.user._id,
         req.body.currentPassword,
-        req.body.newPassword
+        req.body.newPassword,
+        context
       );
       return sendSuccess(res, {
         message: result.message,

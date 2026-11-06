@@ -5,6 +5,7 @@ const { USER_TYPES, TOKEN_AUDIENCE } = require('@younora/shared-constants');
 const AdminUser = require('../users/models/adminUser.model');
 const Customer = require('../users/models/customer.model');
 const RefreshToken = require('../users/models/refreshToken.model');
+const AuditService = require('../audit/audit.service');
 const { hashToken, generateRandomToken, generateTokenFamily } = require('../../core/utils/crypto');
 const mailer = require('../../core/mail/mailer');
 const AppError = require('../../core/errors/appError');
@@ -88,6 +89,20 @@ class AuthService {
     const accessToken = jwt.sign({ sub: user._id.toString() }, env.JWT_ACCESS_SECRET, {
       audience: TOKEN_AUDIENCE.ADMIN,
       expiresIn: env.JWT_ACCESS_EXPIRY,
+    });
+
+    // Record audit log for admin login
+    await AuditService.record({
+      actor: user,
+      action: 'auth.admin.login',
+      entity: 'AdminUser',
+      entityId: user._id,
+      before: null,
+      after: {
+        lastLoginAt: user.lastLoginAt,
+      },
+      ip,
+      userAgent,
     });
 
     return {

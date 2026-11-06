@@ -12,6 +12,7 @@ const logger = require('./core/logger');
 const healthRoutes = require('./routes/health.routes');
 const authRoutes = require('./modules/auth/auth.routes');
 const usersRoutes = require('./modules/users/users.routes');
+const auditRoutes = require('./modules/audit/audit.routes');
 const notFoundHandler = require('./core/http/notFoundHandler');
 const errorMiddleware = require('./core/errors/errorMiddleware');
 const AppError = require('./core/errors/appError');
@@ -95,6 +96,7 @@ if (env.NODE_ENV !== 'test') {
 app.use(env.API_PREFIX, healthRoutes);
 app.use(`${env.API_PREFIX}/auth`, authRoutes);
 app.use(env.API_PREFIX, usersRoutes);
+app.use(env.API_PREFIX, auditRoutes);
 app.use('/', healthRoutes); // Also expose /health at root for orchestrators
 
 // 404 Handler
