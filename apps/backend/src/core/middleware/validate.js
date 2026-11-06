@@ -6,10 +6,22 @@ function validate(schemas = {}) {
   return (req, res, next) => {
     try {
       if (schemas.params) {
-        req.params = schemas.params.parse(req.params);
+        const parsed = schemas.params.parse(req.params);
+        try {
+          req.params = parsed;
+        } catch {
+          // ignore if getter
+        }
+        Object.assign(req.params, parsed);
       }
       if (schemas.query) {
-        req.query = schemas.query.parse(req.query);
+        const parsed = schemas.query.parse(req.query);
+        try {
+          req.query = parsed;
+        } catch {
+          // ignore if getter
+        }
+        Object.assign(req.query, parsed);
       }
       if (schemas.body) {
         req.body = schemas.body.parse(req.body);

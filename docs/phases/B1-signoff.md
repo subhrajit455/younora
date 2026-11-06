@@ -64,7 +64,12 @@
   - `src/modules/auth/auth.routes.js` (`/api/v1/auth/admin/login`, `/logout`, `/refresh`)
   - `src/seed/admin.seed.js` (idempotent seed script, refuses placeholder password in production)
   - `tests/integration/adminAuth.test.js`
-- [ ] **Slice 3: Staff Management CRUD**
+- [x] **Slice 3: Staff Management CRUD**
+  - `src/modules/users/users.validation.js` (createStaffSchema, updateStaffSchema, staffQuerySchema)
+  - `src/modules/users/users.service.js` (createStaff, listStaff, getStaffById, updateStaff, deactivateStaff, reactivateStaff)
+  - `src/modules/users/users.controller.js`
+  - `src/modules/users/users.routes.js` (`/api/v1/admin/staff` CRUD, deactivation/reactivation)
+  - `tests/integration/staffManagement.test.js` (15 integration tests covering CRUD, Rule 8 self & last Super Admin protection, token revocation)
 - [ ] **Slice 4: Customer Auth & Password Reset Flow**
 - [ ] **Slice 5: Profile & Address CRUD**
 - [ ] **Slice 6: Audit Logging & Security Hardening**
@@ -74,4 +79,5 @@
 ## Slice Verification
 - **Slice 1:** 26/26 tests passing (`models.test.js`, `health.test.js`, `error.test.js`, `env.test.js`).
 - **Slice 2:** 42/42 tests passing (added `adminAuth.test.js` with 16 integration tests).
+- **Slice 3:** 57/57 tests passing (added `staffManagement.test.js` with 15 integration tests).
 - **Linter:** ESLint clean (0 errors, 0 warnings).
