@@ -3,7 +3,7 @@
 ## Status
 - **Phase:** B1 — Auth, Users, Roles & Permissions
 - **Target Tag:** `v0.1.0`
-- **Current Slice:** Slice 1 (Completed & Updated)
+- **Current Slice:** Slice 4 (Completed)
 
 ---
 
@@ -70,7 +70,12 @@
   - `src/modules/users/users.controller.js`
   - `src/modules/users/users.routes.js` (`/api/v1/admin/staff` CRUD, deactivation/reactivation)
   - `tests/integration/staffManagement.test.js` (15 integration tests covering CRUD, Rule 8 self & last Super Admin protection, token revocation)
-- [ ] **Slice 4: Customer Auth & Password Reset Flow**
+- [x] **Slice 4: Customer Auth & Password Reset Flow**
+  - `src/core/mail/mailer.js` (Nodemailer abstraction, JSON transport in tests, SMTP in prod/staging, zero token logging)
+  - `src/modules/auth/auth.validation.js` (register, login, forgot/reset password, email verification Zod schemas)
+  - `src/modules/auth/auth.service.js` (customer registration, verification token generation, login with lockout and blocked status check, refresh rotation with ~10s grace window and family revocation, constant-time enumeration protection on forgot-password, reset password token validation & session revocation)
+  - `src/modules/auth/auth.controller.js` & `src/modules/auth/auth.routes.js` (endpoints mounted under `/api/v1/auth/customer/*`)
+  - `tests/integration/customerAuth.test.js` (15 integration tests covering registration, duplicate rejection, verification, login, lockout, blocked customer rejection, audience isolation, refresh rotation & reuse detection, forgot & reset password flow)
 - [ ] **Slice 5: Profile & Address CRUD**
 - [ ] **Slice 6: Audit Logging & Security Hardening**
 
@@ -80,4 +85,5 @@
 - **Slice 1:** 26/26 tests passing (`models.test.js`, `health.test.js`, `error.test.js`, `env.test.js`).
 - **Slice 2:** 42/42 tests passing (added `adminAuth.test.js` with 16 integration tests).
 - **Slice 3:** 57/57 tests passing (added `staffManagement.test.js` with 15 integration tests).
+- **Slice 4:** 72/72 tests passing (added `customerAuth.test.js` with 15 integration tests).
 - **Linter:** ESLint clean (0 errors, 0 warnings).

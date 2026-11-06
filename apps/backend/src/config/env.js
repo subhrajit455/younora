@@ -36,6 +36,14 @@ const envSchema = z.object({
   SUPER_ADMIN_NAME: z.string().default('Super Admin'),
   SUPER_ADMIN_EMAIL: z.string().email().default('admin@younora.com'),
   SUPER_ADMIN_PASSWORD: z.string().min(8).default('SuperAdmin@123456'),
+
+  // Mailer & Communication
+  SMTP_HOST: z.string().default('localhost'),
+  SMTP_PORT: z.coerce.number().int().default(587),
+  SMTP_USER: z.string().default(''),
+  SMTP_PASS: z.string().default(''),
+  EMAIL_FROM: z.string().default('Younora Luxury Fashion <noreply@younora.com>'),
+  STOREFRONT_URL: z.string().default('http://localhost:3000'),
 });
 
 function parseEnv(envSource = process.env) {
