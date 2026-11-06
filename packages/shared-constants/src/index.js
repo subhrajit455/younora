@@ -133,6 +133,12 @@ const SIZE_CHART_UNIT = Object.freeze({
 
 const AUDIENCE_NAMES = Object.freeze(['Men', 'Women', 'Kids']);
 
+const PRODUCT_STATUS = Object.freeze({
+  DRAFT: 'DRAFT',
+  ACTIVE: 'ACTIVE',
+  HIDDEN: 'HIDDEN',
+});
+
 module.exports = {
   ROLES,
   USER_TYPES,
@@ -152,4 +158,5 @@ module.exports = {
   ATTRIBUTE_TYPE,
   SIZE_CHART_UNIT,
   AUDIENCE_NAMES,
+  PRODUCT_STATUS,
 };

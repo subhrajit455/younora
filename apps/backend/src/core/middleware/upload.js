@@ -65,8 +65,68 @@ function handleSingleUpload(fieldName = 'file') {
   };
 }
 
+const allowedSpreadsheetMimeTypes = [
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+  'text/csv',
+  'application/csv',
+  'application/octet-stream',
+  'text/plain',
+];
+
+const spreadsheetUpload = multer({
+  storage,
+  limits: {
+    fileSize: env.UPLOAD_MAX_FILE_SIZE_BYTES,
+  },
+  fileFilter: (req, file, cb) => {
+    // Check either mimetype or file extension
+    const hasAllowedMime = allowedSpreadsheetMimeTypes.includes(file.mimetype);
+    const hasAllowedExt = /\.(xlsx|xls|csv)$/i.test(file.originalname);
+    if (hasAllowedMime || hasAllowedExt) {
+      cb(null, true);
+    } else {
+      cb(
+        new AppError(
+          400,
+          ERROR_CODES.VALIDATION_ERROR,
+          `Invalid spreadsheet file. Only XLSX, XLS, and CSV files are allowed.`
+        ),
+        false
+      );
+    }
+  },
+});
+
+function handleSpreadsheetUpload(fieldName = 'file') {
+  const multerMiddleware = spreadsheetUpload.single(fieldName);
+
+  return (req, res, next) => {
+    multerMiddleware(req, res, (err) => {
+      if (err) {
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            const maxMB = (env.UPLOAD_MAX_FILE_SIZE_BYTES / (1024 * 1024)).toFixed(0);
+            return next(
+              new AppError(
+                400,
+                ERROR_CODES.VALIDATION_ERROR,
+                `File size exceeds maximum allowed limit of ${maxMB}MB`
+              )
+            );
+          }
+          return next(new AppError(400, ERROR_CODES.VALIDATION_ERROR, `Upload error: ${err.message}`));
+        }
+        return next(err);
+      }
+      return next();
+    });
+  };
+}
+
 module.exports = {
   upload,
   handleSingleUpload,
+  handleSpreadsheetUpload,
 };
 
