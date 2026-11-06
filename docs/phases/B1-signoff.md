@@ -3,7 +3,7 @@
 ## Status
 - **Phase:** B1 — Auth, Users, Roles & Permissions
 - **Target Tag:** `v0.1.0`
-- **Current Slice:** Slice 4 (Completed)
+- **Current Slice:** Slice 5 (Completed)
 
 ---
 
@@ -76,7 +76,12 @@
   - `src/modules/auth/auth.service.js` (customer registration, verification token generation, login with lockout and blocked status check, refresh rotation with ~10s grace window and family revocation, constant-time enumeration protection on forgot-password, reset password token validation & session revocation)
   - `src/modules/auth/auth.controller.js` & `src/modules/auth/auth.routes.js` (endpoints mounted under `/api/v1/auth/customer/*`)
   - `tests/integration/customerAuth.test.js` (15 integration tests covering registration, duplicate rejection, verification, login, lockout, blocked customer rejection, audience isolation, refresh rotation & reuse detection, forgot & reset password flow)
-- [ ] **Slice 5: Profile & Address CRUD**
+- [x] **Slice 5: Profile & Address CRUD**
+  - `src/modules/users/users.validation.js` (updateAdminProfileSchema, updateCustomerProfileSchema, changePasswordSchema, createAddressSchema, updateAddressSchema)
+  - `src/modules/users/users.service.js` (getAdminProfile, updateAdminProfile [name only], changeAdminPassword, getCustomerProfile, updateCustomerProfile, changeCustomerPassword, listAddresses, createAddress [auto-default, max 10], getAddressById, updateAddress, deleteAddress [hard delete + auto-promotion], setDefaultAddress)
+  - `src/modules/users/users.controller.js` (profile and address request handlers)
+  - `src/modules/users/users.routes.js` (mounted `/api/v1/admin/me`, `/api/v1/me`, `/api/v1/addresses/*`)
+  - `tests/integration/profileAndAddress.test.js` (15 integration tests covering admin profile & password changes, customer profile & password changes, session revocations, address CRUD, Indian PIN/phone validation, max 10 address limit, auto default switching & promotion on delete, and multi-tenant customer isolation)
 - [ ] **Slice 6: Audit Logging & Security Hardening**
 
 ---
@@ -86,4 +91,5 @@
 - **Slice 2:** 42/42 tests passing (added `adminAuth.test.js` with 16 integration tests).
 - **Slice 3:** 57/57 tests passing (added `staffManagement.test.js` with 15 integration tests).
 - **Slice 4:** 72/72 tests passing (added `customerAuth.test.js` with 15 integration tests).
+- **Slice 5:** 87/87 tests passing (added `profileAndAddress.test.js` with 15 integration tests).
 - **Linter:** ESLint clean (0 errors, 0 warnings).

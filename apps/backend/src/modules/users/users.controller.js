@@ -75,6 +75,164 @@ class UsersController {
       next(error);
     }
   }
+
+  // Admin Profile Handlers
+  static async getAdminProfile(req, res, next) {
+    try {
+      const admin = await UsersService.getAdminProfile(req.user._id);
+      return sendSuccess(res, {
+        message: 'Admin profile retrieved successfully',
+        data: admin,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateAdminProfile(req, res, next) {
+    try {
+      const admin = await UsersService.updateAdminProfile(req.user._id, req.body);
+      return sendSuccess(res, {
+        message: 'Admin profile updated successfully',
+        data: admin,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async changeAdminPassword(req, res, next) {
+    try {
+      const result = await UsersService.changeAdminPassword(
+        req.user._id,
+        req.body.currentPassword,
+        req.body.newPassword
+      );
+      return sendSuccess(res, {
+        message: result.message,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Customer Profile Handlers
+  static async getCustomerProfile(req, res, next) {
+    try {
+      const customer = await UsersService.getCustomerProfile(req.user._id);
+      return sendSuccess(res, {
+        message: 'Customer profile retrieved successfully',
+        data: customer,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateCustomerProfile(req, res, next) {
+    try {
+      const customer = await UsersService.updateCustomerProfile(req.user._id, req.body);
+      return sendSuccess(res, {
+        message: 'Customer profile updated successfully',
+        data: customer,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async changeCustomerPassword(req, res, next) {
+    try {
+      const result = await UsersService.changeCustomerPassword(
+        req.user._id,
+        req.body.currentPassword,
+        req.body.newPassword
+      );
+      return sendSuccess(res, {
+        message: result.message,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Customer Address Handlers
+  static async listAddresses(req, res, next) {
+    try {
+      const addresses = await UsersService.listAddresses(req.user._id);
+      return sendSuccess(res, {
+        message: 'Addresses retrieved successfully',
+        data: addresses,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createAddress(req, res, next) {
+    try {
+      const address = await UsersService.createAddress(req.user._id, req.body);
+      return sendSuccess(res, {
+        statusCode: 201,
+        message: 'Address created successfully',
+        data: address,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getAddressById(req, res, next) {
+    try {
+      const address = await UsersService.getAddressById(req.user._id, req.params.id);
+      return sendSuccess(res, {
+        message: 'Address details retrieved successfully',
+        data: address,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateAddress(req, res, next) {
+    try {
+      const address = await UsersService.updateAddress(
+        req.user._id,
+        req.params.id,
+        req.body
+      );
+      return sendSuccess(res, {
+        message: 'Address updated successfully',
+        data: address,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteAddress(req, res, next) {
+    try {
+      const result = await UsersService.deleteAddress(req.user._id, req.params.id);
+      return sendSuccess(res, {
+        message: 'Address deleted successfully',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async setDefaultAddress(req, res, next) {
+    try {
+      const address = await UsersService.setDefaultAddress(req.user._id, req.params.id);
+      return sendSuccess(res, {
+        message: 'Default address updated successfully',
+        data: address,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = UsersController;

@@ -9,6 +9,11 @@ const {
   createStaffSchema,
   updateStaffSchema,
   staffQuerySchema,
+  updateAdminProfileSchema,
+  updateCustomerProfileSchema,
+  changePasswordSchema,
+  createAddressSchema,
+  updateAddressSchema,
   objectIdSchema,
 } = require('./users.validation');
 
@@ -16,7 +21,30 @@ const router = Router();
 
 const idParamsSchema = z.object({ id: objectIdSchema });
 
-// Staff management routes — SUPER_ADMIN only
+// ==========================================
+// Admin Profile Routes
+// ==========================================
+router.get(
+  '/admin/me',
+  authenticate(TOKEN_AUDIENCE.ADMIN),
+  UsersController.getAdminProfile
+);
+router.patch(
+  '/admin/me',
+  authenticate(TOKEN_AUDIENCE.ADMIN),
+  validate({ body: updateAdminProfileSchema }),
+  UsersController.updateAdminProfile
+);
+router.post(
+  '/admin/me/change-password',
+  authenticate(TOKEN_AUDIENCE.ADMIN),
+  validate({ body: changePasswordSchema }),
+  UsersController.changeAdminPassword
+);
+
+// ==========================================
+// Staff Management Routes (SUPER_ADMIN only)
+// ==========================================
 router.use('/admin/staff', authenticate(TOKEN_AUDIENCE.ADMIN), authorizeRole(ROLES.SUPER_ADMIN));
 
 router.post('/admin/staff', validate({ body: createStaffSchema }), UsersController.createStaff);
@@ -36,6 +64,66 @@ router.patch(
   '/admin/staff/:id/reactivate',
   validate({ params: idParamsSchema }),
   UsersController.reactivateStaff
+);
+
+// ==========================================
+// Customer Profile Routes
+// ==========================================
+router.get(
+  '/me',
+  authenticate(TOKEN_AUDIENCE.CUSTOMER),
+  UsersController.getCustomerProfile
+);
+router.patch(
+  '/me',
+  authenticate(TOKEN_AUDIENCE.CUSTOMER),
+  validate({ body: updateCustomerProfileSchema }),
+  UsersController.updateCustomerProfile
+);
+router.post(
+  '/me/change-password',
+  authenticate(TOKEN_AUDIENCE.CUSTOMER),
+  validate({ body: changePasswordSchema }),
+  UsersController.changeCustomerPassword
+);
+
+// ==========================================
+// Customer Address CRUD Routes
+// ==========================================
+router.get(
+  '/addresses',
+  authenticate(TOKEN_AUDIENCE.CUSTOMER),
+  UsersController.listAddresses
+);
+router.post(
+  '/addresses',
+  authenticate(TOKEN_AUDIENCE.CUSTOMER),
+  validate({ body: createAddressSchema }),
+  UsersController.createAddress
+);
+router.get(
+  '/addresses/:id',
+  authenticate(TOKEN_AUDIENCE.CUSTOMER),
+  validate({ params: idParamsSchema }),
+  UsersController.getAddressById
+);
+router.patch(
+  '/addresses/:id',
+  authenticate(TOKEN_AUDIENCE.CUSTOMER),
+  validate({ params: idParamsSchema, body: updateAddressSchema }),
+  UsersController.updateAddress
+);
+router.delete(
+  '/addresses/:id',
+  authenticate(TOKEN_AUDIENCE.CUSTOMER),
+  validate({ params: idParamsSchema }),
+  UsersController.deleteAddress
+);
+router.patch(
+  '/addresses/:id/default',
+  authenticate(TOKEN_AUDIENCE.CUSTOMER),
+  validate({ params: idParamsSchema }),
+  UsersController.setDefaultAddress
 );
 
 module.exports = router;

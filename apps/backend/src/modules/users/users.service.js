@@ -2,6 +2,8 @@ const bcrypt = require('bcryptjs');
 const { env } = require('../../config/env');
 const { ROLES, USER_TYPES } = require('@younora/shared-constants');
 const AdminUser = require('./models/adminUser.model');
+const Customer = require('./models/customer.model');
+const Address = require('./models/address.model');
 const RefreshToken = require('./models/refreshToken.model');
 const AppError = require('../../core/errors/appError');
 const ERROR_CODES = require('../../core/errors/errorCodes');
@@ -219,6 +221,264 @@ class UsersService {
       email: user.email,
       isActive: true,
     };
+  }
+
+  /**
+   * Get authenticated admin profile
+   */
+  static async getAdminProfile(adminId) {
+    const admin = await AdminUser.findById(adminId).select('-passwordHash');
+    if (!admin) {
+      throw new AppError(404, ERROR_CODES.NOT_FOUND, 'Admin user not found');
+    }
+    return admin;
+  }
+
+  /**
+   * Update admin profile (name only per Rule 7)
+   */
+  static async updateAdminProfile(adminId, { name }) {
+    const admin = await AdminUser.findById(adminId);
+    if (!admin) {
+      throw new AppError(404, ERROR_CODES.NOT_FOUND, 'Admin user not found');
+    }
+
+    admin.name = name;
+    await admin.save();
+
+    return {
+      id: admin._id,
+      name: admin.name,
+      email: admin.email,
+      role: admin.role,
+      permissions: admin.permissions,
+      updatedAt: admin.updatedAt,
+    };
+  }
+
+  /**
+   * Change admin password
+   * Requires current password verification and revokes other active sessions
+   */
+  static async changeAdminPassword(adminId, currentPassword, newPassword) {
+    const admin = await AdminUser.findById(adminId).select('+passwordHash');
+    if (!admin) {
+      throw new AppError(404, ERROR_CODES.NOT_FOUND, 'Admin user not found');
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, admin.passwordHash);
+    if (!isMatch) {
+      throw new AppError(401, ERROR_CODES.UNAUTHORIZED, 'Invalid current password');
+    }
+
+    const saltRounds = Math.max(env.BCRYPT_SALT_ROUNDS, 12);
+    admin.passwordHash = await bcrypt.hash(newPassword, saltRounds);
+    admin.passwordChangedAt = new Date();
+    await admin.save();
+
+    // Revoke all other active sessions for this admin
+    await RefreshToken.updateMany(
+      { userId: admin._id, userType: USER_TYPES.ADMIN, revokedAt: null },
+      {
+        $set: {
+          revokedAt: new Date(),
+          revokedReason: 'PASSWORD_CHANGED',
+        },
+      }
+    );
+
+    return { message: 'Password updated successfully' };
+  }
+
+  /**
+   * Get authenticated customer profile
+   */
+  static async getCustomerProfile(customerId) {
+    const customer = await Customer.findById(customerId).select('-passwordHash');
+    if (!customer) {
+      throw new AppError(404, ERROR_CODES.NOT_FOUND, 'Customer not found');
+    }
+    return customer;
+  }
+
+  /**
+   * Update customer profile (name, gender, dob)
+   */
+  static async updateCustomerProfile(customerId, updates) {
+    const customer = await Customer.findById(customerId);
+    if (!customer) {
+      throw new AppError(404, ERROR_CODES.NOT_FOUND, 'Customer not found');
+    }
+
+    if (updates.name !== undefined) customer.name = updates.name;
+    if (updates.gender !== undefined) customer.gender = updates.gender;
+    if (updates.dob !== undefined) customer.dob = updates.dob;
+
+    await customer.save();
+
+    return {
+      id: customer._id,
+      name: customer.name,
+      email: customer.email,
+      phone: customer.phone,
+      gender: customer.gender,
+      dob: customer.dob,
+      emailVerified: customer.emailVerified,
+      isReseller: customer.isReseller,
+      resellerStatus: customer.resellerStatus,
+      updatedAt: customer.updatedAt,
+    };
+  }
+
+  /**
+   * Change customer password
+   * Requires current password verification and revokes other active sessions
+   */
+  static async changeCustomerPassword(customerId, currentPassword, newPassword) {
+    const customer = await Customer.findById(customerId).select('+passwordHash');
+    if (!customer) {
+      throw new AppError(404, ERROR_CODES.NOT_FOUND, 'Customer not found');
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, customer.passwordHash);
+    if (!isMatch) {
+      throw new AppError(401, ERROR_CODES.UNAUTHORIZED, 'Invalid current password');
+    }
+
+    const saltRounds = Math.max(env.BCRYPT_SALT_ROUNDS, 12);
+    customer.passwordHash = await bcrypt.hash(newPassword, saltRounds);
+    customer.passwordChangedAt = new Date();
+    await customer.save();
+
+    // Revoke all other active sessions for this customer
+    await RefreshToken.updateMany(
+      { userId: customer._id, userType: USER_TYPES.CUSTOMER, revokedAt: null },
+      {
+        $set: {
+          revokedAt: new Date(),
+          revokedReason: 'PASSWORD_CHANGED',
+        },
+      }
+    );
+
+    return { message: 'Password updated successfully' };
+  }
+
+  /**
+   * List addresses for customer
+   */
+  static async listAddresses(customerId) {
+    return Address.find({ customer: customerId }).sort({ isDefault: -1, createdAt: -1 });
+  }
+
+  /**
+   * Create new address for customer
+   * Auto-promotes first address to default; unsets existing default if isDefault is true
+   * Enforces max 10 addresses
+   */
+  static async createAddress(customerId, addressData) {
+    const count = await Address.countDocuments({ customer: customerId });
+    if (count >= 10) {
+      throw new AppError(400, ERROR_CODES.BAD_REQUEST, 'Maximum 10 addresses allowed per customer');
+    }
+
+    const isDefault = count === 0 ? true : !!addressData.isDefault;
+
+    if (isDefault) {
+      await Address.updateMany(
+        { customer: customerId, isDefault: true },
+        { $set: { isDefault: false } }
+      );
+    }
+
+    const address = await Address.create({
+      ...addressData,
+      customer: customerId,
+      isDefault,
+    });
+
+    return address;
+  }
+
+  /**
+   * Get address by ID for customer
+   */
+  static async getAddressById(customerId, addressId) {
+    const address = await Address.findOne({ _id: addressId, customer: customerId });
+    if (!address) {
+      throw new AppError(404, ERROR_CODES.NOT_FOUND, 'Address not found');
+    }
+    return address;
+  }
+
+  /**
+   * Update address
+   */
+  static async updateAddress(customerId, addressId, updates) {
+    const address = await Address.findOne({ _id: addressId, customer: customerId });
+    if (!address) {
+      throw new AppError(404, ERROR_CODES.NOT_FOUND, 'Address not found');
+    }
+
+    if (updates.isDefault === true) {
+      await Address.updateMany(
+        { customer: customerId, _id: { $ne: addressId }, isDefault: true },
+        { $set: { isDefault: false } }
+      );
+    }
+
+    Object.assign(address, updates);
+    await address.save();
+    return address;
+  }
+
+  /**
+   * Hard delete address
+   * If deleted address was default, auto-promotes another address to default
+   */
+  static async deleteAddress(customerId, addressId) {
+    const address = await Address.findOne({ _id: addressId, customer: customerId });
+    if (!address) {
+      throw new AppError(404, ERROR_CODES.NOT_FOUND, 'Address not found');
+    }
+
+    const wasDefault = address.isDefault;
+    await Address.deleteOne({ _id: addressId });
+
+    let newDefaultId = null;
+    if (wasDefault) {
+      const nextAddress = await Address.findOne({ customer: customerId }).sort({ createdAt: -1 });
+      if (nextAddress) {
+        nextAddress.isDefault = true;
+        await nextAddress.save();
+        newDefaultId = nextAddress._id;
+      }
+    }
+
+    return {
+      id: addressId,
+      deleted: true,
+      newDefaultId,
+    };
+  }
+
+  /**
+   * Set address as default
+   */
+  static async setDefaultAddress(customerId, addressId) {
+    const address = await Address.findOne({ _id: addressId, customer: customerId });
+    if (!address) {
+      throw new AppError(404, ERROR_CODES.NOT_FOUND, 'Address not found');
+    }
+
+    await Address.updateMany(
+      { customer: customerId, isDefault: true },
+      { $set: { isDefault: false } }
+    );
+
+    address.isDefault = true;
+    await address.save();
+    return address;
   }
 }
 
