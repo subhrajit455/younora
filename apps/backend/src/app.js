@@ -27,6 +27,10 @@ const storeCmsRouter = require('./modules/cms/storeCms.routes');
 const { adminSettingsRouter, storeSettingsRouter } = require('./modules/settings/settings.routes');
 const { adminCouponRouter } = require('./modules/pricing/coupon.routes');
 const cartRouter = require('./modules/cart/cart.routes');
+const checkoutRouter = require('./modules/checkout/checkout.routes');
+const paymentRouter = require('./modules/payments/payment.routes');
+const orderRouter = require('./modules/orders/order.routes');
+const adminOrderRouter = require('./modules/orders/adminOrder.routes');
 
 // Initialize event subscribers
 registerNotificationSubscribers();
@@ -71,7 +75,14 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // Body and cookie parsing
-app.use(express.json({ limit: '1mb' }));
+app.use(
+  express.json({
+    limit: '1mb',
+    verify: (req, _res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(cookieParser());
 
@@ -124,6 +135,7 @@ app.use(`${env.API_PREFIX}/admin/uploads`, uploadRouter);
 app.use(`${env.API_PREFIX}/admin/products`, productRouter);
 app.use(`${env.API_PREFIX}/admin/settings`, adminSettingsRouter);
 app.use(`${env.API_PREFIX}/admin/coupons`, adminCouponRouter);
+app.use(`${env.API_PREFIX}/admin/orders`, adminOrderRouter);
 app.use(`${env.API_PREFIX}/admin`, inventoryRouter);
 app.use(`${env.API_PREFIX}/admin`, adminCatalogRouter);
 app.use(`${env.API_PREFIX}/store/settings`, storeSettingsRouter);
@@ -133,6 +145,9 @@ app.use(`${env.API_PREFIX}/store`, storeMenuRouter);
 app.use(`${env.API_PREFIX}/store`, storeCmsRouter);
 app.use(`${env.API_PREFIX}/wishlist`, wishlistRouter);
 app.use(`${env.API_PREFIX}/cart`, cartRouter);
+app.use(`${env.API_PREFIX}/checkout`, checkoutRouter);
+app.use(`${env.API_PREFIX}/payments`, paymentRouter);
+app.use(`${env.API_PREFIX}/orders`, orderRouter);
 app.use('/', healthRoutes); // Also expose /health at root for orchestrators
 
 // 404 Handler

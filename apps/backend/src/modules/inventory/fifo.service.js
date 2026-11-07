@@ -436,6 +436,86 @@ class FifoService {
       reservedStock: updatedVariant.reservedStock,
     };
   }
+
+  /**
+   * Restocks items from a cancelled confirmed order back to the original batches and variant.
+   */
+  async restockCancelledSale({
+    variantId,
+    allocations,
+    refType = STOCK_MOVEMENT_REF_TYPE.ORDER,
+    refId = null,
+    actor = null,
+    note = 'Cancelled order restocked',
+  }) {
+    if (!Array.isArray(allocations) || !allocations.length) {
+      throw AppError.badRequest('Allocations array is required for restock');
+    }
+
+    const totalQty = allocations.reduce((sum, a) => sum + Number(a.qty), 0);
+
+    const updatedVariant = await Variant.findOneAndUpdate(
+      { _id: variantId },
+      {
+        $inc: {
+          stock: totalQty,
+        },
+      },
+      { new: true }
+    );
+
+    if (!updatedVariant) {
+      throw AppError.conflict('Variant not found for restock');
+    }
+
+    let runningBalance = updatedVariant.stock - totalQty;
+    const movementDocs = [];
+
+    for (const split of allocations) {
+      const splitQty = Number(split.qty);
+      await Batch.updateOne(
+        {
+          _id: split.batchId,
+          'items.variant': variantId,
+        },
+        {
+          $inc: {
+            'items.$.qtyAvailable': splitQty,
+            'items.$.qtySold': -splitQty,
+          },
+          $set: {
+            status: BATCH_STATUS.ACTIVE,
+          },
+        }
+      );
+
+      runningBalance += splitQty;
+      movementDocs.push({
+        variant: updatedVariant._id,
+        batch: split.batchId,
+        type: STOCK_MOVEMENT_TYPE.CANCEL,
+        qty: splitQty,
+        balanceAfter: runningBalance,
+        refType,
+        refId,
+        actor,
+        note: `${note} (${split.batchNo || split.batchId})`,
+      });
+    }
+
+    await Product.updateOne(
+      { _id: updatedVariant.product },
+      { $inc: { totalStock: totalQty } }
+    );
+
+    await StockMovement.insertMany(movementDocs);
+
+    return {
+      variantId: updatedVariant._id,
+      restockedQty: totalQty,
+      stock: updatedVariant.stock,
+    };
+  }
 }
 
 module.exports = new FifoService();

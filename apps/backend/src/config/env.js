@@ -50,6 +50,11 @@ const envSchema = z.object({
   CLOUDINARY_API_KEY: z.string().default('123456789012345'),
   CLOUDINARY_API_SECRET: z.string().default('younora-cloudinary-secret-key-12345'),
   UPLOAD_MAX_FILE_SIZE_BYTES: z.coerce.number().int().positive().default(5 * 1024 * 1024),
+
+  // Payments & Razorpay
+  RAZORPAY_KEY_ID: z.string().default('rzp_test_placeholder'),
+  RAZORPAY_KEY_SECRET: z.string().default('placeholder_secret'),
+  RAZORPAY_WEBHOOK_SECRET: z.string().default('placeholder_webhook_secret'),
 });
 
 function parseEnv(envSource = process.env) {

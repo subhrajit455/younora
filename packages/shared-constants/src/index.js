@@ -194,6 +194,22 @@ const SETTINGS_SECTIONS = Object.freeze({
   REVIEWS: 'reviews',
 });
 
+const INVOICE_TYPE = Object.freeze({
+  INTERNAL: 'INTERNAL',
+  RESELLING: 'RESELLING',
+});
+
+const ORDER_SOURCE = Object.freeze({
+  WEB: 'WEB',
+  ADMIN: 'ADMIN',
+});
+
+const ORDER_ITEM_STATUS = Object.freeze({
+  ACTIVE: 'ACTIVE',
+  CANCELLED: 'CANCELLED',
+  RETURNED: 'RETURNED',
+});
+
 module.exports = {
   ROLES,
   USER_TYPES,
@@ -221,4 +237,7 @@ module.exports = {
   COUPON_TYPE,
   COUPON_SCOPE,
   SETTINGS_SECTIONS,
+  INVOICE_TYPE,
+  ORDER_SOURCE,
+  ORDER_ITEM_STATUS,
 };
