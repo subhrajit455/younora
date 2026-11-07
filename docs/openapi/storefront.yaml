@@ -1,0 +1,595 @@
+openapi: 3.0.3
+info:
+  title: Younora Luxury Fashion Storefront API
+  description: >
+    Frozen OpenAPI 3.0 specification for Younora Luxury Fashion public storefront read contracts,
+    customer wishlist, and CMS exploration. All monetary values are strictly represented in integer paise (1 INR = 100 paise).
+  version: 0.6.0
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Local Development Server
+  - url: https://api.younora.com/api/v1
+    description: Production API Gateway
+
+paths:
+  /store/products:
+    get:
+      summary: List Products
+      description: Returns paginated active products with multi-facet filtering and sorting.
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: audience
+          in: query
+          description: Audience slug or ObjectId (e.g. 'women', 'men', 'kids')
+          schema:
+            type: string
+        - name: category
+          in: query
+          description: Category slug or ObjectId (e.g. 'lehengas', 'sarees')
+          schema:
+            type: string
+        - name: subcategory
+          in: query
+          schema:
+            type: string
+        - name: size
+          in: query
+          description: Comma-separated sizes (e.g. 'S,M,38')
+          schema:
+            type: string
+        - name: color
+          in: query
+          description: Comma-separated color names (e.g. 'Royal Ivory,Crimson Red')
+          schema:
+            type: string
+        - name: fabric
+          in: query
+          schema:
+            type: string
+        - name: occasion
+          in: query
+          schema:
+            type: string
+        - name: fit
+          in: query
+          schema:
+            type: string
+        - name: pattern
+          in: query
+          schema:
+            type: string
+        - name: minPrice
+          in: query
+          description: Minimum selling price in integer paise
+          schema:
+            type: integer
+        - name: maxPrice
+          in: query
+          description: Maximum selling price in integer paise
+          schema:
+            type: integer
+        - name: inStockOnly
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: isFeatured
+          in: query
+          schema:
+            type: boolean
+        - name: isNewArrival
+          in: query
+          schema:
+            type: boolean
+        - name: isBestSeller
+          in: query
+          schema:
+            type: boolean
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [newest, oldest, price_asc, price_desc, rating, popular]
+            default: newest
+      responses:
+        '200':
+          description: Success envelope with product cards and pagination meta
+          headers:
+            ETag:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListResponse'
+        '304':
+          description: Not Modified (Content matches client If-None-Match ETag)
+
+  /store/products/{slug}:
+    get:
+      summary: Get Product Detail by Slug
+      description: Returns complete product details with active variants, color grouping, size availability, attached size chart, and breadcrumbs.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product detail envelope
+          headers:
+            ETag:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDetailResponse'
+        '404':
+          description: Product not found or currently unavailable
+
+  /store/products/{slug}/similar:
+    get:
+      summary: Similar Products
+      description: Returns up to 8 contextual related products matching category, audience, or tags.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Similar products array
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimilarProductsResponse'
+
+  /store/filters:
+    get:
+      summary: Dynamic Facet Aggregation
+      description: Computes available sizes, colors, fabrics, occasions, fits, and price range bounds for the current category or query.
+      parameters:
+        - name: audience
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: subcategory
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Facets aggregation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FiltersResponse'
+
+  /store/search:
+    get:
+      summary: Full-Text Search
+      description: Performs full-text keyword search across product name, description, tags, and fabric.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Search results array
+
+  /store/search/suggest:
+    get:
+      summary: Autocomplete Search Suggestions
+      description: Fast prefix suggestion returning product titles and category matches.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Search suggestions
+
+  /store/home:
+    get:
+      summary: Curated Homepage Payload
+      description: Aggregated payload containing active hero banners, featured products, new arrivals, best sellers, and top categories.
+      responses:
+        '200':
+          description: Homepage payload
+
+  /store/banners:
+    get:
+      summary: List Active Banners
+      parameters:
+        - name: position
+          in: query
+          schema:
+            type: string
+            enum: [HERO_MAIN, HERO_SIDE, CATEGORY_TOP, FOOTER_FEATURE]
+      responses:
+        '200':
+          description: Active banners array
+
+  /store/pages/{slug}:
+    get:
+      summary: CMS Page Content
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CMS static page
+
+  /store/pincode/{pin}:
+    get:
+      summary: Pincode Delivery Check
+      parameters:
+        - name: pin
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pincode delivery estimates and COD availability
+
+  /store/enquiry:
+    post:
+      summary: Submit Public Enquiry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnquiryInput'
+      responses:
+        '201':
+          description: Enquiry recorded
+
+  /store/batch/{batchNo}:
+    get:
+      summary: Public Batch Authenticity Lookup
+      description: Strictly whitelisted public verification returning product authenticity tag, images, and color/sizes in the batch.
+      parameters:
+        - name: batchNo
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Authenticity verification
+
+  /store/menu:
+    get:
+      summary: Storefront Navigation Tree
+      responses:
+        '200':
+          description: Hierarchical navigation taxonomy tree
+
+  /wishlist:
+    get:
+      summary: Customer Wishlist
+      security:
+        - CustomerAuth: []
+      responses:
+        '200':
+          description: Customer wishlisted products
+    post:
+      summary: Add to Wishlist
+      security:
+        - CustomerAuth: []
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Product added to wishlist
+    delete:
+      summary: Remove from Wishlist
+      security:
+        - CustomerAuth: []
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product removed from wishlist
+
+components:
+  securitySchemes:
+    CustomerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    PriceRange:
+      type: object
+      properties:
+        minSelling:
+          type: integer
+          description: Integer paise
+        maxSelling:
+          type: integer
+        minMrp:
+          type: integer
+        maxMrp:
+          type: integer
+
+    ColorOption:
+      type: object
+      properties:
+        name:
+          type: string
+        hex:
+          type: string
+        images:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+              alt:
+                type: string
+
+    ProductCard:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        brand:
+          type: string
+        fabric:
+          type: string
+        colors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ColorOption'
+        priceRange:
+          $ref: '#/components/schemas/PriceRange'
+        rating:
+          type: object
+          properties:
+            avg:
+              type: number
+            count:
+              type: integer
+        totalStock:
+          type: integer
+        isFeatured:
+          type: boolean
+        isNewArrival:
+          type: boolean
+        isBestSeller:
+          type: boolean
+
+    ProductListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductCard'
+        meta:
+          type: object
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            total:
+              type: integer
+            totalPages:
+              type: integer
+
+    ProductDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            _id:
+              type: string
+            name:
+              type: string
+            slug:
+              type: string
+            description:
+              type: string
+            highlights:
+              type: array
+              items:
+                type: string
+            fabric:
+              type: string
+            fit:
+              type: string
+            pattern:
+              type: string
+            occasion:
+              type: string
+            careInstructions:
+              type: string
+            countryOfOrigin:
+              type: string
+            colors:
+              type: array
+              items:
+                $ref: '#/components/schemas/ColorOption'
+            priceRange:
+              $ref: '#/components/schemas/PriceRange'
+            colorVariants:
+              type: array
+              items:
+                type: object
+                properties:
+                  color:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      hex:
+                        type: string
+                  sizes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        variantId:
+                          type: string
+                        size:
+                          type: string
+                        sku:
+                          type: string
+                        mrp:
+                          type: integer
+                        sellingPrice:
+                          type: integer
+                        inStock:
+                          type: boolean
+            sizeChart:
+              type: object
+            breadcrumbs:
+              type: array
+              items:
+                type: object
+                properties:
+                  label:
+                    type: string
+                  url:
+                    type: string
+
+    SimilarProductsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductCard'
+
+    FiltersResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            sizes:
+              type: array
+              items:
+                type: string
+            colors:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  hex:
+                    type: string
+            fabrics:
+              type: array
+              items:
+                type: string
+            occasions:
+              type: array
+              items:
+                type: string
+            fits:
+              type: array
+              items:
+                type: string
+            patterns:
+              type: array
+              items:
+                type: string
+            priceRange:
+              type: object
+              properties:
+                min:
+                  type: integer
+                max:
+                  type: integer
+
+    EnquiryInput:
+      type: object
+      required:
+        - name
+        - email
+        - message
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        subject:
+          type: string
+        message:
+          type: string
+

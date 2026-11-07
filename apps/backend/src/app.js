@@ -22,6 +22,8 @@ const productRouter = require('./modules/catalog/product.routes');
 const storeProductRouter = require('./modules/catalog/storeProduct.routes');
 const inventoryRouter = require('./modules/inventory/inventory.routes');
 const storeBatchRouter = require('./modules/inventory/storeBatch.routes');
+const wishlistRouter = require('./modules/wishlist/wishlist.routes');
+const storeCmsRouter = require('./modules/cms/storeCms.routes');
 
 // Initialize event subscribers
 registerNotificationSubscribers();
@@ -119,9 +121,11 @@ app.use(`${env.API_PREFIX}/admin/uploads`, uploadRouter);
 app.use(`${env.API_PREFIX}/admin/products`, productRouter);
 app.use(`${env.API_PREFIX}/admin`, inventoryRouter);
 app.use(`${env.API_PREFIX}/admin`, adminCatalogRouter);
-app.use(`${env.API_PREFIX}/store/products`, storeProductRouter);
+app.use(`${env.API_PREFIX}/store`, storeProductRouter);
 app.use(`${env.API_PREFIX}/store/batch`, storeBatchRouter);
 app.use(`${env.API_PREFIX}/store`, storeMenuRouter);
+app.use(`${env.API_PREFIX}/store`, storeCmsRouter);
+app.use(`${env.API_PREFIX}/wishlist`, wishlistRouter);
 app.use('/', healthRoutes); // Also expose /health at root for orchestrators
 
 // 404 Handler
