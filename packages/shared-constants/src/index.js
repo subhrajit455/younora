@@ -171,6 +171,29 @@ const ADJUSTMENT_REASON = Object.freeze({
   OTHER: 'OTHER',
 });
 
+const COUPON_TYPE = Object.freeze({
+  PERCENT: 'PERCENT',
+  FLAT: 'FLAT',
+});
+
+const COUPON_SCOPE = Object.freeze({
+  ALL: 'ALL',
+  CATEGORY: 'CATEGORY',
+  PRODUCT: 'PRODUCT',
+});
+
+const SETTINGS_SECTIONS = Object.freeze({
+  STORE: 'store',
+  PAYMENTS: 'payments',
+  SHIPPING: 'shipping',
+  RETURNS: 'returns',
+  TAX: 'tax',
+  INVOICE: 'invoice',
+  RESELLING: 'reselling',
+  NOTIFICATIONS: 'notifications',
+  REVIEWS: 'reviews',
+});
+
 module.exports = {
   ROLES,
   USER_TYPES,
@@ -195,4 +218,7 @@ module.exports = {
   STOCK_MOVEMENT_TYPE,
   STOCK_MOVEMENT_REF_TYPE,
   ADJUSTMENT_REASON,
+  COUPON_TYPE,
+  COUPON_SCOPE,
+  SETTINGS_SECTIONS,
 };

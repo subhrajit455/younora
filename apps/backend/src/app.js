@@ -24,6 +24,9 @@ const inventoryRouter = require('./modules/inventory/inventory.routes');
 const storeBatchRouter = require('./modules/inventory/storeBatch.routes');
 const wishlistRouter = require('./modules/wishlist/wishlist.routes');
 const storeCmsRouter = require('./modules/cms/storeCms.routes');
+const { adminSettingsRouter, storeSettingsRouter } = require('./modules/settings/settings.routes');
+const { adminCouponRouter } = require('./modules/pricing/coupon.routes');
+const cartRouter = require('./modules/cart/cart.routes');
 
 // Initialize event subscribers
 registerNotificationSubscribers();
@@ -119,13 +122,17 @@ if (env.NODE_ENV !== 'production') {
 app.use(`${env.API_PREFIX}/notifications`, notificationsRoutes);
 app.use(`${env.API_PREFIX}/admin/uploads`, uploadRouter);
 app.use(`${env.API_PREFIX}/admin/products`, productRouter);
+app.use(`${env.API_PREFIX}/admin/settings`, adminSettingsRouter);
+app.use(`${env.API_PREFIX}/admin/coupons`, adminCouponRouter);
 app.use(`${env.API_PREFIX}/admin`, inventoryRouter);
 app.use(`${env.API_PREFIX}/admin`, adminCatalogRouter);
+app.use(`${env.API_PREFIX}/store/settings`, storeSettingsRouter);
 app.use(`${env.API_PREFIX}/store`, storeProductRouter);
 app.use(`${env.API_PREFIX}/store/batch`, storeBatchRouter);
 app.use(`${env.API_PREFIX}/store`, storeMenuRouter);
 app.use(`${env.API_PREFIX}/store`, storeCmsRouter);
 app.use(`${env.API_PREFIX}/wishlist`, wishlistRouter);
+app.use(`${env.API_PREFIX}/cart`, cartRouter);
 app.use('/', healthRoutes); // Also expose /health at root for orchestrators
 
 // 404 Handler

@@ -94,5 +94,52 @@ function authenticate(expectedAudience = TOKEN_AUDIENCE.ADMIN) {
   };
 }
 
+/**
+ * Optional authentication middleware
+ * If a valid Bearer token is provided, sets req.user.
+ * If no token or invalid token, proceeds without error (req.user remains undefined/null).
+ */
+authenticate.optional = function (expectedAudience = TOKEN_AUDIENCE.CUSTOMER) {
+  const allowedAudiences = Array.isArray(expectedAudience) ? expectedAudience : [expectedAudience];
+
+  return async (req, res, next) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return next();
+      }
+
+      const token = authHeader.split(' ')[1];
+      let decoded;
+
+      try {
+        decoded = jwt.verify(token, env.JWT_ACCESS_SECRET, {
+          audience: allowedAudiences,
+        });
+      } catch {
+        return next();
+      }
+
+      let user = null;
+      if (decoded.aud === TOKEN_AUDIENCE.ADMIN) {
+        user = await AdminUser.findById(decoded.sub);
+        if (user && !user.isActive) user = null;
+      } else if (decoded.aud === TOKEN_AUDIENCE.CUSTOMER) {
+        user = await Customer.findById(decoded.sub);
+        if (user && user.isBlocked) user = null;
+      }
+
+      if (user) {
+        req.user = user;
+        req.tokenAudience = decoded.aud;
+      }
+
+      return next();
+    } catch {
+      return next();
+    }
+  };
+};
+
 module.exports = authenticate;
 
