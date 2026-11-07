@@ -89,6 +89,16 @@ const TEMPLATES = {
     }),
   },
 
+  [EVENT_NAMES.STOCK_OUT]: {
+    admin: data => ({
+      type: 'STOCK_OUT',
+      title: 'Out of Stock Alert',
+      body: `${data.productName || 'product'} (${data.sku || ''}) is now out of stock (0 units remaining).`,
+      deepLink: `/admin/inventory?sku=${data.sku || ''}`,
+      permission: PERMISSIONS.INVENTORY_READ,
+    }),
+  },
+
   [EVENT_NAMES.REVIEW_CREATED]: {
     admin: data => ({
       type: 'REVIEW_CREATED',

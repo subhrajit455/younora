@@ -62,8 +62,48 @@ function requirePermission(permission) {
   };
 }
 
+/**
+ * Granular permission-based authorization middleware allowing any of the specified permissions.
+ * SUPER_ADMIN bypasses all permission checks.
+ *
+ * @param {...string} permissions
+ */
+function requireAnyPermission(...permissions) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return next(
+        new AppError(
+          401,
+          ERROR_CODES.UNAUTHORIZED,
+          'Authentication required'
+        )
+      );
+    }
+
+    if (req.user.role === ROLES.SUPER_ADMIN) {
+      return next();
+    }
+
+    const userPerms = Array.isArray(req.user.permissions) ? req.user.permissions : [];
+    const hasAny = permissions.some((p) => userPerms.includes(p));
+
+    if (!hasAny) {
+      return next(
+        new AppError(
+          403,
+          ERROR_CODES.FORBIDDEN,
+          `Access denied: requires one of [${permissions.join(', ')}] permissions`
+        )
+      );
+    }
+
+    next();
+  };
+}
+
 module.exports = {
   authorizeRole,
   requirePermission,
+  requireAnyPermission,
 };
 

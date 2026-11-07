@@ -20,6 +20,8 @@ const { adminCatalogRouter, storeMenuRouter } = require('./modules/catalog/catal
 const uploadRouter = require('./modules/catalog/upload.routes');
 const productRouter = require('./modules/catalog/product.routes');
 const storeProductRouter = require('./modules/catalog/storeProduct.routes');
+const inventoryRouter = require('./modules/inventory/inventory.routes');
+const storeBatchRouter = require('./modules/inventory/storeBatch.routes');
 
 // Initialize event subscribers
 registerNotificationSubscribers();
@@ -115,8 +117,10 @@ if (env.NODE_ENV !== 'production') {
 app.use(`${env.API_PREFIX}/notifications`, notificationsRoutes);
 app.use(`${env.API_PREFIX}/admin/uploads`, uploadRouter);
 app.use(`${env.API_PREFIX}/admin/products`, productRouter);
+app.use(`${env.API_PREFIX}/admin`, inventoryRouter);
 app.use(`${env.API_PREFIX}/admin`, adminCatalogRouter);
 app.use(`${env.API_PREFIX}/store/products`, storeProductRouter);
+app.use(`${env.API_PREFIX}/store/batch`, storeBatchRouter);
 app.use(`${env.API_PREFIX}/store`, storeMenuRouter);
 app.use('/', healthRoutes); // Also expose /health at root for orchestrators
 
